@@ -156,12 +156,6 @@ function App() {
     pizza: 'Pizza'
   }
 
-  const sizeLabels: Record<string, string> = {
-    small: 'Küçük',
-    medium: 'Orta',
-    large: 'Büyük'
-  }
-
   const filteredMenu = selectedCategory === 'all' 
     ? menuData 
     : menuData.filter(item => item.category === selectedCategory)
@@ -262,23 +256,35 @@ function App() {
                   <div className="mt-6 pt-5 border-t-2 border-gray-200">
                     {item.category === 'pizza' ? (
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1 text-center bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl p-3 border border-red-100 shadow-sm hover:shadow-md transition-shadow">
-                          <div className="text-[10px] md:text-xs font-black text-red-700 uppercase tracking-wider mb-1.5">Küçük</div>
-                          <div className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-red-600 to-red-700">
+                        {/* Küçük - Mavi */}
+                        <div className="flex-1 text-center bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 border-2 border-blue-200 shadow-md hover:shadow-lg hover:scale-105 transition-all">
+                          <div className="inline-flex items-center justify-center bg-blue-600 text-white rounded-full px-3 py-1 mb-2">
+                            <span className="text-xs md:text-sm font-black uppercase tracking-wider">Küçük</span>
+                          </div>
+                          <div className="text-base md:text-lg font-extrabold text-blue-700 mb-2">24 cm</div>
+                          <div className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-600 to-blue-700">
                             {item.prices.small}₺
                           </div>
                         </div>
-                        <div className="w-px h-16 bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
-                        <div className="flex-1 text-center bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl p-3 border border-red-100 shadow-sm hover:shadow-md transition-shadow">
-                          <div className="text-[10px] md:text-xs font-black text-red-700 uppercase tracking-wider mb-1.5">Orta</div>
-                          <div className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-red-600 to-red-700">
+                        <div className="w-px h-24 bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
+                        {/* Orta - Turuncu */}
+                        <div className="flex-1 text-center bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-4 border-2 border-orange-200 shadow-md hover:shadow-lg hover:scale-105 transition-all">
+                          <div className="inline-flex items-center justify-center bg-orange-600 text-white rounded-full px-3 py-1 mb-2">
+                            <span className="text-xs md:text-sm font-black uppercase tracking-wider">Orta</span>
+                          </div>
+                          <div className="text-base md:text-lg font-extrabold text-orange-700 mb-2">28 cm</div>
+                          <div className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-orange-600 to-orange-700">
                             {item.prices.medium}₺
                           </div>
                         </div>
-                        <div className="w-px h-16 bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
-                        <div className="flex-1 text-center bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl p-3 border border-red-100 shadow-sm hover:shadow-md transition-shadow">
-                          <div className="text-[10px] md:text-xs font-black text-red-700 uppercase tracking-wider mb-1.5">Büyük</div>
-                          <div className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-red-600 to-red-700">
+                        <div className="w-px h-24 bg-gradient-to-b from-transparent via-gray-300 to-transparent"></div>
+                        {/* Büyük - Yeşil */}
+                        <div className="flex-1 text-center bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 border-2 border-green-200 shadow-md hover:shadow-lg hover:scale-105 transition-all">
+                          <div className="inline-flex items-center justify-center bg-green-600 text-white rounded-full px-3 py-1 mb-2">
+                            <span className="text-xs md:text-sm font-black uppercase tracking-wider">Büyük</span>
+                          </div>
+                          <div className="text-base md:text-lg font-extrabold text-green-700 mb-2">32 cm</div>
+                          <div className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-br from-green-600 to-green-700">
                             {item.prices.large}₺
                           </div>
                         </div>

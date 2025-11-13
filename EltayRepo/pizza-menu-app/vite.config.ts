@@ -8,6 +8,8 @@ export default defineConfig({
     port: process.env.PORT ? parseInt(process.env.PORT) : 4173,
     allowedHosts: [
       '.onrender.com',
+      'timtimpizza.com',
+      'www.timtimpizza.com',
       'localhost',
     ],
   },

@@ -6,6 +6,10 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: process.env.PORT ? parseInt(process.env.PORT) : 4173,
+    allowedHosts: [
+      '.onrender.com',
+      'localhost',
+    ],
   },
   server: {
     host: '0.0.0.0',

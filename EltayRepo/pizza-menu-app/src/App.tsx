@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { supabase } from './supabaseClient'
 
 interface PizzaSize {
@@ -167,7 +167,7 @@ const menuData: MenuItem[] = [
 ]
 
 // Cache utilities
-const CACHE_TTL = 5 * 60 * 1000 // 5 dakika
+const CACHE_TTL = 30 * 60 * 1000 // 30 dakika - daha uzun cache süresi
 const MENU_CACHE_KEY = 'timtim_menu_cache'
 const MENU_CACHE_TIME_KEY = 'timtim_menu_cache_time'
 const CAMPAIGNS_CACHE_KEY = 'timtim_campaigns_cache'
@@ -365,43 +365,72 @@ const getCategories = async (forceRefresh = false): Promise<Category[]> => {
 }
 
 function App() {
-  // İlk render'da cache kontrolü yap
-  const initialCachedMenu = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
-  const initialCachedCampaigns = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
-  const initialCachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
-  
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(initialCachedMenu || [])
-  const [campaigns, setCampaigns] = useState<Campaign[]>(initialCachedCampaigns || [])
-  const [categories, setCategories] = useState<Category[]>(initialCachedCategories || [])
-  const [isLoading, setIsLoading] = useState(!initialCachedMenu || initialCachedMenu.length === 0)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  
+  // useLayoutEffect: DOM güncellemesinden ÖNCE çalışır - hiç loading gösterilmez
+  useLayoutEffect(() => {
+    // Cache'den senkron olarak yükle
+    const cachedMenu = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
+    const cachedCampaigns = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
+    const cachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
+    
+    if (cachedMenu && cachedMenu.length > 0) {
+      setMenuItems(cachedMenu)
+      setIsLoading(false) // Cache varsa loading'i hemen kapat
+    }
+    
+    if (cachedCampaigns && cachedCampaigns.length > 0) {
+      setCampaigns(cachedCampaigns)
+    }
+    
+    if (cachedCategories && cachedCategories.length > 0) {
+      setCategories(cachedCategories)
+    }
+  }, [])
 
   useEffect(() => {
-    const loadMenu = async () => {
-      // Cache yoksa loading göster (initial state'te cache yoksa)
-      if (!initialCachedMenu || initialCachedMenu.length === 0) {
-        setIsLoading(true)
-      }
+    // Cache kontrolü
+    const cachedMenu = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
+    
+    if (cachedMenu && cachedMenu.length > 0) {
+      // Cache var - arka planda sessizce güncelle (kullanıcı fark etmez)
+      // setTimeout ile gecikme ekle ki kullanıcı önce cache'i görsün
+      const updateTimer = setTimeout(() => {
+        Promise.all([
+          getMenuData(false),
+          getCampaigns(false),
+          getCategories(false)
+        ]).then(([freshMenu, freshCampaigns, freshCategories]) => {
+          setMenuItems(freshMenu)
+          setCampaigns(freshCampaigns)
+          setCategories(freshCategories)
+        }).catch(() => {
+          // Hata olsa bile sessizce devam et
+        })
+      }, 500) // 500ms gecikme - kullanıcı zaten cache'den görüyor
       
-      // Arka planda güncel veriyi çek (cache olsa bile) - ASENKRON
-      // Cache varsa kullanıcı zaten veriyi görüyor, bu sadece sessizce günceller
-      Promise.all([
-        getMenuData(false), // Cache kontrolü yap
-        getCampaigns(false), // Cache kontrolü yap
-        getCategories(false) // Cache kontrolü yap
-      ]).then(([freshMenu, freshCampaigns, freshCategories]) => {
-        // Arka planda güncelle
-        setMenuItems(freshMenu)
-        setCampaigns(freshCampaigns)
-        setCategories(freshCategories)
-        setIsLoading(false) // Her durumda loading'i kapat
-      }).catch(() => {
-        setIsLoading(false) // Hata olsa bile loading'i kapat
-      })
+      return () => clearTimeout(updateTimer)
     }
-    loadMenu()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Sadece mount'ta çalış
+    
+    // Cache yoksa normal yükleme
+    setIsLoading(true)
+    Promise.all([
+      getMenuData(false),
+      getCampaigns(false),
+      getCategories(false)
+    ]).then(([freshMenu, freshCampaigns, freshCategories]) => {
+      setMenuItems(freshMenu)
+      setCampaigns(freshCampaigns)
+      setCategories(freshCategories)
+      setIsLoading(false)
+    }).catch(() => {
+      setIsLoading(false)
+    })
+  }, [])
 
   // Kategorileri dinamik olarak oluştur
   const categoryLabels: Record<string, string> = {

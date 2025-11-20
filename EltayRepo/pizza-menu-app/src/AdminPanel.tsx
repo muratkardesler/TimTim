@@ -294,6 +294,11 @@ export default function AdminPanel() {
   }, [isAuthenticated])
 
   const categoryLabels: Record<string, string> = {
+    ...categories.reduce((acc, cat) => {
+      acc[cat.name] = cat.label
+      return acc
+    }, {} as Record<string, string>),
+    // Fallback için varsayılan değerler
     pizza: 'Pizza',
     drink: 'İçecek',
     dessert: 'Tatlı'
@@ -656,14 +661,24 @@ export default function AdminPanel() {
                     </label>
                     <select
                       name="category"
-                      defaultValue={editingItem?.category || 'pizza'}
+                      defaultValue={editingItem?.category || (categories.length > 0 ? categories[0].name : 'pizza')}
                       required
                       onChange={(e) => setSelectedCategory(e.target.value)}
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none font-medium"
                     >
-                      <option value="pizza">Pizza</option>
-                      <option value="drink">İçecek</option>
-                      <option value="dessert">Tatlı</option>
+                      {categories.length > 0 ? (
+                        categories.map(category => (
+                          <option key={category.id} value={category.name}>
+                            {category.label}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="pizza">Pizza</option>
+                          <option value="drink">İçecek</option>
+                          <option value="dessert">Tatlı</option>
+                        </>
+                      )}
                     </select>
                   </div>
 

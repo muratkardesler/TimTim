@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface PizzaSize {
   small: number
@@ -147,8 +147,27 @@ const menuData: MenuItem[] = [
   }
 ]
 
+const STORAGE_KEY = 'timtim_pizza_menu'
+
+// localStorage utilities
+const getMenuData = (): MenuItem[] => {
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (stored) {
+    return JSON.parse(stored)
+  }
+  // İlk yüklemede default veriyi kaydet
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(menuData))
+  return menuData
+}
+
 function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+
+  useEffect(() => {
+    const data = getMenuData()
+    setMenuItems(data)
+  }, [])
 
   const categories = ['all', 'pizza']
   const categoryLabels: Record<string, string> = {
@@ -157,15 +176,15 @@ function App() {
   }
 
   const filteredMenu = selectedCategory === 'all' 
-    ? menuData 
-    : menuData.filter(item => item.category === selectedCategory)
+    ? menuItems 
+    : menuItems.filter(item => item.category === selectedCategory)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 pb-20">
       {/* Header - Sticky */}
       <header className="bg-gradient-to-r from-red-600 to-red-700 text-white shadow-xl sticky top-0 z-20">
         <div className="flex items-center justify-center h-20 md:h-28 px-4">
-          {/* Logo - Centered and Scaled */}
+          {/* Logo - Centered */}
           <img 
             src="/logo.jpg" 
             alt="Tim Tim Pizza Logo" 
@@ -210,9 +229,14 @@ function App() {
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMenu.map(item => {
-            // Görsel path'i oluştur
-            const imageFileName = item.image.split('/').pop() || ''
-            const imagePath = `/pizzas/${encodeURIComponent(imageFileName)}`
+            // Görsel: base64 ise direkt kullan, değilse path'ten yükle
+            const isBase64 = item.image.startsWith('data:image')
+            const imageSrc = isBase64 
+              ? item.image 
+              : (() => {
+                  const imageFileName = item.image.split('/').pop() || ''
+                  return `/pizzas/${encodeURIComponent(imageFileName)}`
+                })()
             
             return (
               <div
@@ -223,7 +247,7 @@ function App() {
                 <div className="w-full h-56 md:h-64 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden relative">
                   {item.image ? (
                     <img 
-                      src={imagePath} 
+                      src={imageSrc} 
                       alt={item.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {

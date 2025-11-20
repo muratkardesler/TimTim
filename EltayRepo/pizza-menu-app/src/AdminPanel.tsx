@@ -135,24 +135,6 @@ const saveCampaign = async (campaign: Campaign): Promise<boolean> => {
   }
 }
 
-const deleteCampaign = async (id: number): Promise<boolean> => {
-  try {
-    const { error } = await supabase
-      .from('timtim_campaigns')
-      .delete()
-      .eq('id', id)
-    
-    if (error) {
-      console.error('Error deleting campaign:', error)
-      return false
-    }
-    return true
-  } catch (error) {
-    console.error('Error:', error)
-    return false
-  }
-}
-
 const ADMIN_USERNAME = 'timtim'
 const ADMIN_PASSWORD = 'fatih123'
 

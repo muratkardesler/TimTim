@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient'
 
 interface PizzaSize {
   small: number
@@ -147,17 +148,41 @@ const menuData: MenuItem[] = [
   }
 ]
 
-const STORAGE_KEY = 'timtim_pizza_menu'
-
-// localStorage utilities
-const getMenuData = (): MenuItem[] => {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored) {
-    return JSON.parse(stored)
+// Supabase utilities
+const getMenuData = async (): Promise<MenuItem[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('timtim_pizza_menu')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching menu:', error)
+      // Hata durumunda default veriyi döndür
+      return menuData
+    }
+    
+    if (data && data.length > 0) {
+      return data.map(item => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        prices: {
+          small: item.price_small,
+          medium: item.price_medium,
+          large: item.price_large
+        },
+        category: 'pizza' as const,
+        image: item.image || ''
+      }))
+    }
+    
+    // Veri yoksa default veriyi döndür
+    return menuData
+  } catch (error) {
+    console.error('Error:', error)
+    return menuData
   }
-  // İlk yüklemede default veriyi kaydet
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(menuData))
-  return menuData
 }
 
 function App() {
@@ -165,8 +190,11 @@ function App() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
 
   useEffect(() => {
-    const data = getMenuData()
-    setMenuItems(data)
+    const loadMenu = async () => {
+      const data = await getMenuData()
+      setMenuItems(data)
+    }
+    loadMenu()
   }, [])
 
   const categories = ['all', 'pizza']

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from './supabaseClient'
+import { migrateMenuToSupabase } from './migrateMenu'
 
 interface PizzaSize {
   small: number
@@ -16,19 +18,81 @@ interface MenuItem {
   image: string
 }
 
-const STORAGE_KEY = 'timtim_pizza_menu'
-
-// localStorage utilities
-const getMenuData = (): MenuItem[] => {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored) {
-    return JSON.parse(stored)
+// Supabase utilities
+const getMenuData = async (): Promise<MenuItem[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('timtim_pizza_menu')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching menu:', error)
+      return []
+    }
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      prices: {
+        small: item.price_small,
+        medium: item.price_medium,
+        large: item.price_large
+      },
+      category: 'pizza' as const,
+      image: item.image || ''
+    }))
+  } catch (error) {
+    console.error('Error:', error)
+    return []
   }
-  return []
 }
 
-const saveMenuData = (data: MenuItem[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+const saveMenuItem = async (item: MenuItem): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('timtim_pizza_menu')
+      .upsert({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price_small: item.prices.small,
+        price_medium: item.prices.medium,
+        price_large: item.prices.large,
+        image: item.image,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      })
+    
+    if (error) {
+      console.error('Error saving menu item:', error)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('Error:', error)
+    return false
+  }
+}
+
+const deleteMenuItem = async (id: number): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('timtim_pizza_menu')
+      .delete()
+      .eq('id', id)
+    
+    if (error) {
+      console.error('Error deleting menu item:', error)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('Error:', error)
+    return false
+  }
 }
 
 const ADMIN_USERNAME = 'timtim'
@@ -45,15 +109,18 @@ export default function AdminPanel() {
   const [showForm, setShowForm] = useState(false)
   const [imagePreview, setImagePreview] = useState<string>('')
   const [itemToDelete, setItemToDelete] = useState<MenuItem | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
-      const data = getMenuData()
-      if (data.length > 0) {
-        setMenuItems(data)
-      }
+      loadMenuData()
     }
   }, [isAuthenticated])
+
+  const loadMenuData = async () => {
+    const data = await getMenuData()
+    setMenuItems(data)
+  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -147,7 +214,7 @@ export default function AdminPanel() {
     }
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     const formData = new FormData(e.target as HTMLFormElement)
     
@@ -164,20 +231,15 @@ export default function AdminPanel() {
       image: imagePreview || editingItem?.image || ''
     }
 
-    let updatedItems: MenuItem[]
-    if (editingItem) {
-      updatedItems = menuItems.map(item => 
-        item.id === editingItem.id ? newItem : item
-      )
+    const success = await saveMenuItem(newItem)
+    if (success) {
+      await loadMenuData()
+      setShowForm(false)
+      setEditingItem(null)
+      setImagePreview('')
     } else {
-      updatedItems = [...menuItems, newItem]
+      alert('Pizza kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.')
     }
-
-    setMenuItems(updatedItems)
-    saveMenuData(updatedItems)
-    setShowForm(false)
-    setEditingItem(null)
-    setImagePreview('')
   }
 
   const handleEdit = (item: MenuItem) => {
@@ -190,12 +252,15 @@ export default function AdminPanel() {
     setItemToDelete(item)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (itemToDelete) {
-      const updatedItems = menuItems.filter(item => item.id !== itemToDelete.id)
-      setMenuItems(updatedItems)
-      saveMenuData(updatedItems)
-      setItemToDelete(null)
+      const success = await deleteMenuItem(itemToDelete.id)
+      if (success) {
+        await loadMenuData()
+        setItemToDelete(null)
+      } else {
+        alert('Pizza silinirken bir hata oluştu. Lütfen tekrar deneyin.')
+      }
     }
   }
 
@@ -207,6 +272,24 @@ export default function AdminPanel() {
     setEditingItem(null)
     setImagePreview('')
     setShowForm(true)
+  }
+
+  const handleImportMenu = async () => {
+    if (!confirm('Mevcut menüyü Supabase\'e aktarmak istediğinize emin misiniz? Mevcut veriler güncellenecek.')) {
+      return
+    }
+    
+    setIsImporting(true)
+    try {
+      const result = await migrateMenuToSupabase(true) // Resimleri base64'e çevir
+      alert(`✅ Aktarım tamamlandı!\n${result.successCount} pizza başarıyla kaydedildi.\n${result.errorCount} hata oluştu.`)
+      await loadMenuData()
+    } catch (error) {
+      console.error('Import hatası:', error)
+      alert('❌ Aktarım sırasında bir hata oluştu. Lütfen tekrar deneyin.')
+    } finally {
+      setIsImporting(false)
+    }
   }
 
   const handleCancel = () => {
@@ -241,6 +324,13 @@ export default function AdminPanel() {
                 className="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-all"
               >
                 Çıkış Yap
+              </button>
+              <button
+                onClick={handleImportMenu}
+                disabled={isImporting}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-bold hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isImporting ? '⏳ Aktarılıyor...' : '📥 Menüyü Aktar'}
               </button>
               <button
                 onClick={handleNew}

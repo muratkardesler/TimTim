@@ -365,48 +365,43 @@ const getCategories = async (forceRefresh = false): Promise<Category[]> => {
 }
 
 function App() {
+  // İlk render'da cache kontrolü yap
+  const initialCachedMenu = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
+  const initialCachedCampaigns = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
+  const initialCachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
+  
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(initialCachedMenu || [])
+  const [campaigns, setCampaigns] = useState<Campaign[]>(initialCachedCampaigns || [])
+  const [categories, setCategories] = useState<Category[]>(initialCachedCategories || [])
+  const [isLoading, setIsLoading] = useState(!initialCachedMenu || initialCachedMenu.length === 0)
 
   useEffect(() => {
     const loadMenu = async () => {
-      // Önce cache'den hızlıca yükle (eğer varsa)
-      const cachedMenu = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
-      const cachedCampaigns = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
-      const cachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
-      
-      if (cachedMenu) {
-        setMenuItems(cachedMenu)
-        setIsLoading(false) // Cache'den yüklendi, loading'i kapat
-      } else {
-        setIsLoading(true) // Cache yok, loading göster
+      // Cache yoksa loading göster (initial state'te cache yoksa)
+      if (!initialCachedMenu || initialCachedMenu.length === 0) {
+        setIsLoading(true)
       }
       
-      if (cachedCampaigns) {
-        setCampaigns(cachedCampaigns)
-      }
-      
-      if (cachedCategories) {
-        setCategories(cachedCategories)
-      }
-      
-      // Arka planda güncel veriyi çek (cache olsa bile)
-      const [freshMenu, freshCampaigns, freshCategories] = await Promise.all([
+      // Arka planda güncel veriyi çek (cache olsa bile) - ASENKRON
+      // Cache varsa kullanıcı zaten veriyi görüyor, bu sadece sessizce günceller
+      Promise.all([
         getMenuData(false), // Cache kontrolü yap
         getCampaigns(false), // Cache kontrolü yap
         getCategories(false) // Cache kontrolü yap
-      ])
-      
-      setMenuItems(freshMenu)
-      setCampaigns(freshCampaigns)
-      setCategories(freshCategories)
-      setIsLoading(false)
+      ]).then(([freshMenu, freshCampaigns, freshCategories]) => {
+        // Arka planda güncelle
+        setMenuItems(freshMenu)
+        setCampaigns(freshCampaigns)
+        setCategories(freshCategories)
+        setIsLoading(false) // Her durumda loading'i kapat
+      }).catch(() => {
+        setIsLoading(false) // Hata olsa bile loading'i kapat
+      })
     }
     loadMenu()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Sadece mount'ta çalış
 
   // Kategorileri dinamik olarak oluştur
   const categoryLabels: Record<string, string> = {

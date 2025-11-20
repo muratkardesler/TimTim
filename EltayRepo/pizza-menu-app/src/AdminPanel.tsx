@@ -135,6 +135,51 @@ const saveCampaign = async (campaign: Campaign): Promise<boolean> => {
   }
 }
 
+const deleteCampaign = async (id: number): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('timtim_campaigns')
+      .delete()
+      .eq('id', id)
+    
+    if (error) {
+      console.error('Error deleting campaign:', error)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('Error:', error)
+    return false
+  }
+}
+
+const getCampaigns = async (): Promise<Campaign[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('timtim_campaigns')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching campaigns:', error)
+      return []
+    }
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      items: item.items || [],
+      image: item.image || '',
+      created_at: item.created_at
+    }))
+  } catch (error) {
+    console.error('Error:', error)
+    return []
+  }
+}
+
 const ADMIN_USERNAME = 'timtim'
 const ADMIN_PASSWORD = 'fatih123'
 
@@ -157,6 +202,11 @@ export default function AdminPanel() {
   const [campaignDescription, setCampaignDescription] = useState('')
   const [campaignPrice, setCampaignPrice] = useState('')
   const [campaignImage, setCampaignImage] = useState<string>('')
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null)
+  const [showCategoryForm, setShowCategoryForm] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -173,6 +223,8 @@ export default function AdminPanel() {
   const loadMenuData = async () => {
     const data = await getMenuData()
     setMenuItems(data)
+    const campaignData = await getCampaigns()
+    setCampaigns(campaignData)
   }
 
   const handleLogin = (e: React.FormEvent) => {
@@ -379,6 +431,38 @@ export default function AdminPanel() {
     setShowForm(true)
   }
 
+  const handleEditCampaign = (campaign: Campaign) => {
+    setEditingCampaign(campaign)
+    setCampaignName(campaign.name)
+    setCampaignDescription(campaign.description)
+    setCampaignPrice(campaign.price.toString())
+    setSelectedItems(campaign.items)
+    setCampaignImage(campaign.image || '')
+    setShowCampaignForm(true)
+  }
+
+  const handleDeleteCampaign = (campaign: Campaign) => {
+    setCampaignToDelete(campaign)
+  }
+
+  const confirmDeleteCampaign = async () => {
+    if (campaignToDelete) {
+      const deletedCampaign = campaignToDelete
+      
+      // Optimistic update: UI'dan hemen kaldır
+      setCampaigns(prev => prev.filter(c => c.id !== deletedCampaign.id))
+      setCampaignToDelete(null)
+
+      // Arka planda sil
+      const success = await deleteCampaign(deletedCampaign.id)
+      if (!success) {
+        // Hata durumunda geri al
+        await loadMenuData()
+        alert('Kampanya silinirken bir hata oluştu. Lütfen tekrar deneyin.')
+      }
+    }
+  }
+
   const handleImportMenu = async () => {
     if (!confirm('Mevcut menüyü Supabase\'e aktarmak istediğinize emin misiniz? Mevcut veriler güncellenecek.')) {
       return
@@ -444,10 +528,24 @@ export default function AdminPanel() {
                 + Yeni Ürün Ekle
               </button>
               <button
-                onClick={() => setShowCampaignForm(true)}
+                onClick={() => {
+                  setEditingCampaign(null)
+                  setCampaignName('')
+                  setCampaignDescription('')
+                  setCampaignPrice('')
+                  setSelectedItems([])
+                  setCampaignImage('')
+                  setShowCampaignForm(true)
+                }}
                 className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
               >
                 🎁 Kampanya Oluştur
+              </button>
+              <button
+                onClick={() => setShowCategoryForm(true)}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg"
+              >
+                📁 Kategori Ekle
               </button>
             </div>
           </div>
@@ -649,7 +747,7 @@ export default function AdminPanel() {
             <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <h2 className="text-2xl font-black text-gray-900 mb-6">
-                  🎁 Yeni Kampanya Oluştur
+                  🎁 {editingCampaign ? 'Kampanya Düzenle' : 'Yeni Kampanya Oluştur'}
                 </h2>
                 
                 <div className="space-y-6">
@@ -798,7 +896,7 @@ export default function AdminPanel() {
                           return
                         }
                         const campaign: Campaign = {
-                          id: Date.now(),
+                          id: editingCampaign?.id || Date.now(),
                           name: campaignName,
                           description: campaignDescription,
                           price: Number(campaignPrice),
@@ -807,15 +905,17 @@ export default function AdminPanel() {
                         }
                         const success = await saveCampaign(campaign)
                         if (success) {
+                          await loadMenuData()
                           setShowCampaignForm(false)
+                          setEditingCampaign(null)
                           setCampaignName('')
                           setCampaignDescription('')
                           setCampaignPrice('')
                           setSelectedItems([])
                           setCampaignImage('')
-                          alert('Kampanya başarıyla oluşturuldu!')
+                          alert(editingCampaign ? 'Kampanya başarıyla güncellendi!' : 'Kampanya başarıyla oluşturuldu!')
                         } else {
-                          alert('Kampanya oluşturulurken bir hata oluştu.')
+                          alert(editingCampaign ? 'Kampanya güncellenirken bir hata oluştu.' : 'Kampanya oluşturulurken bir hata oluştu.')
                         }
                       }}
                       className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
@@ -826,6 +926,7 @@ export default function AdminPanel() {
                       type="button"
                       onClick={() => {
                         setShowCampaignForm(false)
+                        setEditingCampaign(null)
                         setCampaignName('')
                         setCampaignDescription('')
                         setCampaignPrice('')
@@ -998,6 +1099,209 @@ export default function AdminPanel() {
             >
               İlk Pizzayı Ekle
             </button>
+          </div>
+        )}
+
+        {/* Kampanyalar Listesi */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-black text-gray-900 mb-6">🎁 Kampanyalar</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {campaigns.map(campaign => {
+              const campaignItems = menuItems.filter(item => campaign.items.includes(item.id))
+              return (
+                <div
+                  key={campaign.id}
+                  className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-lg overflow-hidden border-2 border-purple-200"
+                >
+                  {/* Görsel */}
+                  <div className="w-full h-48 bg-gradient-to-br from-purple-100 to-pink-100 overflow-hidden relative">
+                    {campaign.image ? (
+                      <img
+                        src={campaign.image}
+                        alt={campaign.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 p-4 w-full h-full">
+                        {campaignItems.slice(0, 4).map((item, idx) => (
+                          <div key={idx} className="bg-white rounded-lg overflow-hidden">
+                            {item.image && (
+                              <img
+                                src={item.image.startsWith('data:image') ? item.image : `/pizzas/${item.image.split('/').pop()}`}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="absolute top-3 right-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 py-1 rounded-full font-black text-xs shadow-lg">
+                      🎁 KAMPANYA
+                    </div>
+                  </div>
+                  
+                  {/* İçerik */}
+                  <div className="p-5">
+                    <h3 className="text-xl font-black text-gray-900 mb-2">{campaign.name}</h3>
+                    <p className="text-sm text-gray-700 mb-3 line-clamp-2">{campaign.description}</p>
+                    
+                    {/* İçerik Listesi */}
+                    <div className="mb-3">
+                      <p className="text-xs font-bold text-gray-600 mb-2">İçerik:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {campaignItems.slice(0, 3).map(item => (
+                          <span key={item.id} className="bg-white px-2 py-1 rounded text-xs font-bold text-gray-700 border border-gray-200">
+                            {item.name}
+                          </span>
+                        ))}
+                        {campaignItems.length > 3 && (
+                          <span className="bg-white px-2 py-1 rounded text-xs font-bold text-gray-700 border border-gray-200">
+                            +{campaignItems.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Fiyat */}
+                    <div className="mb-4">
+                      <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl p-3 text-center">
+                        <p className="text-xs font-bold opacity-90">Kampanya Fiyatı</p>
+                        <p className="text-2xl font-black">{campaign.price}₺</p>
+                      </div>
+                    </div>
+                    
+                    {/* Butonlar */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditCampaign(campaign)}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all"
+                      >
+                        Düzenle
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCampaign(campaign)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-all"
+                      >
+                        Sil
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          
+          {campaigns.length === 0 && (
+            <div className="text-center py-16 bg-white rounded-2xl shadow-lg">
+              <div className="text-6xl mb-4">🎁</div>
+              <p className="text-gray-500 text-lg font-semibold mb-4">Henüz kampanya eklenmemiş</p>
+              <button
+                onClick={() => {
+                  setEditingCampaign(null)
+                  setCampaignName('')
+                  setCampaignDescription('')
+                  setCampaignPrice('')
+                  setSelectedItems([])
+                  setCampaignImage('')
+                  setShowCampaignForm(true)
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
+              >
+                İlk Kampanyayı Oluştur
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Kampanya Silme Onay Modalı */}
+        {campaignToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all">
+              <div className="p-6">
+                <h3 className="text-2xl font-black text-gray-900 mb-4">Kampanyayı Sil</h3>
+                <p className="text-gray-700 mb-6">
+                  <strong>{campaignToDelete.name}</strong> kampanyasını silmek istediğinizden emin misiniz?
+                </p>
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6">
+                  <p className="text-sm text-red-800 font-semibold">
+                    <strong>Dikkat:</strong> Bu kampanya silinirse, menüden tamamen kaldırılacak ve bu işlem geri alınamaz.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setCampaignToDelete(null)}
+                    className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-all"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={confirmDeleteCampaign}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold hover:from-red-700 hover:to-red-800 transition-all shadow-lg"
+                  >
+                    Evet, Sil
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Kategori Ekleme Form Modal */}
+        {showCategoryForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+              <div className="p-6">
+                <h2 className="text-2xl font-black text-gray-900 mb-6">
+                  📁 Yeni Kategori Ekle
+                </h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Kategori Adı *
+                    </label>
+                    <input
+                      type="text"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none font-medium"
+                      placeholder="Örn: Çorba, Salata"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!newCategoryName.trim()) {
+                          alert('Lütfen kategori adı girin')
+                          return
+                        }
+                        // Kategori ekleme işlemi - şimdilik sadece bilgilendirme
+                        alert(`"${newCategoryName}" kategorisi eklendi! (Not: Kategori ekleme özelliği yakında aktif olacak)`)
+                        setShowCategoryForm(false)
+                        setNewCategoryName('')
+                      }}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg"
+                    >
+                      Kaydet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCategoryForm(false)
+                        setNewCategoryName('')
+                      }}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-all"
+                    >
+                      İptal
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

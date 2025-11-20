@@ -14,8 +14,18 @@ interface MenuItem {
   name: string
   description: string
   prices: PizzaSize
-  category: 'pizza'
+  category: string
   image: string
+  is_new?: boolean
+}
+
+interface Campaign {
+  id: number
+  name: string
+  description: string
+  price: number
+  items: number[]
+  image?: string
 }
 
 // Supabase utilities
@@ -36,12 +46,13 @@ const getMenuData = async (): Promise<MenuItem[]> => {
       name: item.name,
       description: item.description,
       prices: {
-        small: item.price_small,
-        medium: item.price_medium,
-        large: item.price_large
+        small: item.price_small || 0,
+        medium: item.price_medium || 0,
+        large: item.price_large || 0
       },
-      category: 'pizza' as const,
-      image: item.image || ''
+      category: item.category || 'pizza',
+      image: item.image || '',
+      is_new: item.is_new || false
     }))
   } catch (error) {
     console.error('Error:', error)
@@ -60,6 +71,8 @@ const saveMenuItem = async (item: MenuItem): Promise<boolean> => {
         price_small: item.prices.small,
         price_medium: item.prices.medium,
         price_large: item.prices.large,
+        category: item.category || 'pizza',
+        is_new: item.is_new || false,
         image: item.image,
         updated_at: new Date().toISOString()
       }, {
@@ -95,6 +108,51 @@ const deleteMenuItem = async (id: number): Promise<boolean> => {
   }
 }
 
+const saveCampaign = async (campaign: Campaign): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('timtim_campaigns')
+      .upsert({
+        id: campaign.id,
+        name: campaign.name,
+        description: campaign.description,
+        price: campaign.price,
+        items: campaign.items,
+        image: campaign.image || '',
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      })
+    
+    if (error) {
+      console.error('Error saving campaign:', error)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('Error:', error)
+    return false
+  }
+}
+
+const deleteCampaign = async (id: number): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('timtim_campaigns')
+      .delete()
+      .eq('id', id)
+    
+    if (error) {
+      console.error('Error deleting campaign:', error)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('Error:', error)
+    return false
+  }
+}
+
 const ADMIN_USERNAME = 'timtim'
 const ADMIN_PASSWORD = 'fatih123'
 
@@ -110,12 +168,25 @@ export default function AdminPanel() {
   const [imagePreview, setImagePreview] = useState<string>('')
   const [itemToDelete, setItemToDelete] = useState<MenuItem | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<string>('pizza')
+  const [showCampaignForm, setShowCampaignForm] = useState(false)
+  const [selectedItems, setSelectedItems] = useState<number[]>([])
+  const [campaignName, setCampaignName] = useState('')
+  const [campaignDescription, setCampaignDescription] = useState('')
+  const [campaignPrice, setCampaignPrice] = useState('')
+  const [campaignImage, setCampaignImage] = useState<string>('')
 
   useEffect(() => {
     if (isAuthenticated) {
       loadMenuData()
     }
   }, [isAuthenticated])
+
+  const categoryLabels: Record<string, string> = {
+    pizza: 'Pizza',
+    drink: 'İçecek',
+    dessert: 'Tatlı'
+  }
 
   const loadMenuData = async () => {
     const data = await getMenuData()
@@ -202,13 +273,43 @@ export default function AdminPanel() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Resim boyutunu optimize et (max 800px width, quality 0.8)
       const reader = new FileReader()
       reader.onloadend = () => {
-        const base64String = reader.result as string
-        setImagePreview(base64String)
-        if (editingItem) {
-          setEditingItem({ ...editingItem, image: base64String })
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const maxWidth = 800
+          const maxHeight = 800
+          let width = img.width
+          let height = img.height
+
+          // Boyutlandır
+          if (width > height) {
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width
+              width = maxWidth
+            }
+          } else {
+            if (height > maxHeight) {
+              width = (width * maxHeight) / height
+              height = maxHeight
+            }
+          }
+
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(img, 0, 0, width, height)
+
+          // Base64'e çevir (quality 0.8)
+          const base64String = canvas.toDataURL('image/jpeg', 0.8)
+          setImagePreview(base64String)
+          if (editingItem) {
+            setEditingItem({ ...editingItem, image: base64String })
+          }
         }
+        img.src = reader.result as string
       }
       reader.readAsDataURL(file)
     }
@@ -218,26 +319,40 @@ export default function AdminPanel() {
     e.preventDefault()
     const formData = new FormData(e.target as HTMLFormElement)
     
+    const category = formData.get('category') as string || 'pizza'
+    const isNew = formData.get('isNew') === 'true'
+    
     const newItem: MenuItem = {
       id: editingItem?.id || Date.now(),
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       prices: {
-        small: Number(formData.get('priceSmall')),
-        medium: Number(formData.get('priceMedium')),
-        large: Number(formData.get('priceLarge'))
+        small: Number(formData.get('priceSmall')) || Number(formData.get('price')) || 0,
+        medium: Number(formData.get('priceMedium')) || Number(formData.get('price')) || 0,
+        large: Number(formData.get('priceLarge')) || Number(formData.get('price')) || 0
       },
-      category: 'pizza',
+      category: category,
+      is_new: isNew,
       image: imagePreview || editingItem?.image || ''
     }
 
-    const success = await saveMenuItem(newItem)
-    if (success) {
-      await loadMenuData()
-      setShowForm(false)
-      setEditingItem(null)
-      setImagePreview('')
+    // Optimistic update: UI'ı hemen güncelle
+    if (editingItem) {
+      setMenuItems(prev => prev.map(item => item.id === editingItem.id ? newItem : item))
     } else {
+      setMenuItems(prev => [...prev, newItem])
+    }
+    
+    // Form'u kapat
+    setShowForm(false)
+    setEditingItem(null)
+    setImagePreview('')
+
+    // Arka planda kaydet
+    const success = await saveMenuItem(newItem)
+    if (!success) {
+      // Hata durumunda geri al
+      await loadMenuData()
       alert('Pizza kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.')
     }
   }
@@ -245,6 +360,7 @@ export default function AdminPanel() {
   const handleEdit = (item: MenuItem) => {
     setEditingItem(item)
     setImagePreview(item.image)
+    setSelectedCategory(item.category)
     setShowForm(true)
   }
 
@@ -254,11 +370,17 @@ export default function AdminPanel() {
 
   const confirmDelete = async () => {
     if (itemToDelete) {
-      const success = await deleteMenuItem(itemToDelete.id)
-      if (success) {
+      const deletedItem = itemToDelete
+      
+      // Optimistic update: UI'dan hemen kaldır
+      setMenuItems(prev => prev.filter(item => item.id !== deletedItem.id))
+      setItemToDelete(null)
+
+      // Arka planda sil
+      const success = await deleteMenuItem(deletedItem.id)
+      if (!success) {
+        // Hata durumunda geri al
         await loadMenuData()
-        setItemToDelete(null)
-      } else {
         alert('Pizza silinirken bir hata oluştu. Lütfen tekrar deneyin.')
       }
     }
@@ -271,6 +393,7 @@ export default function AdminPanel() {
   const handleNew = () => {
     setEditingItem(null)
     setImagePreview('')
+    setSelectedCategory('pizza')
     setShowForm(true)
   }
 
@@ -336,7 +459,13 @@ export default function AdminPanel() {
                 onClick={handleNew}
                 className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold hover:from-red-700 hover:to-red-800 transition-all shadow-lg"
               >
-                + Yeni Pizza Ekle
+                + Yeni Ürün Ekle
+              </button>
+              <button
+                onClick={() => setShowCampaignForm(true)}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
+              >
+                🎁 Kampanya Oluştur
               </button>
             </div>
           </div>
@@ -352,10 +481,28 @@ export default function AdminPanel() {
                 </h2>
                 
                 <form onSubmit={handleSave} className="space-y-6">
+                  {/* Kategori */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Kategori *
+                    </label>
+                    <select
+                      name="category"
+                      defaultValue={editingItem?.category || 'pizza'}
+                      required
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none font-medium"
+                    >
+                      <option value="pizza">Pizza</option>
+                      <option value="drink">İçecek</option>
+                      <option value="dessert">Tatlı</option>
+                    </select>
+                  </div>
+
                   {/* Pizza Adı */}
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
-                      Pizza Adı *
+                      Ürün Adı *
                     </label>
                     <input
                       type="text"
@@ -363,8 +510,23 @@ export default function AdminPanel() {
                       defaultValue={editingItem?.name || ''}
                       required
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none font-medium"
-                      placeholder="Örn: Margarita Pizza"
+                      placeholder="Örn: Margarita Pizza veya Kola"
                     />
+                  </div>
+                  
+                  {/* Yeni Ürün Toggle */}
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      name="isNew"
+                      id="isNew"
+                      defaultChecked={editingItem?.is_new || false}
+                      value="true"
+                      className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    />
+                    <label htmlFor="isNew" className="text-sm font-bold text-gray-700 cursor-pointer">
+                      ✨ Yeni Ürün Olarak İşaretle
+                    </label>
                   </div>
 
                   {/* Açıklama */}
@@ -383,50 +545,67 @@ export default function AdminPanel() {
                   </div>
 
                   {/* Fiyatlar */}
-                  <div className="grid grid-cols-3 gap-4">
+                  {selectedCategory === 'pizza' || (editingItem && editingItem.category === 'pizza') ? (
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                          Küçük (24cm) *
+                        </label>
+                        <input
+                          type="number"
+                          name="priceSmall"
+                          defaultValue={editingItem?.prices.small || ''}
+                          required
+                          min="0"
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none font-medium"
+                          placeholder="₺"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                          Orta (28cm) *
+                        </label>
+                        <input
+                          type="number"
+                          name="priceMedium"
+                          defaultValue={editingItem?.prices.medium || ''}
+                          required
+                          min="0"
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none font-medium"
+                          placeholder="₺"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                          Büyük (32cm) *
+                        </label>
+                        <input
+                          type="number"
+                          name="priceLarge"
+                          defaultValue={editingItem?.prices.large || ''}
+                          required
+                          min="0"
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none font-medium"
+                          placeholder="₺"
+                        />
+                      </div>
+                    </div>
+                  ) : (
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Küçük (24cm) *
+                        Fiyat *
                       </label>
                       <input
                         type="number"
-                        name="priceSmall"
-                        defaultValue={editingItem?.prices.small || ''}
+                        name="price"
+                        defaultValue={editingItem?.prices.small || editingItem?.prices.medium || editingItem?.prices.large || ''}
                         required
                         min="0"
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none font-medium"
                         placeholder="₺"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Orta (28cm) *
-                      </label>
-                      <input
-                        type="number"
-                        name="priceMedium"
-                        defaultValue={editingItem?.prices.medium || ''}
-                        required
-                        min="0"
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none font-medium"
-                        placeholder="₺"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Büyük (32cm) *
-                      </label>
-                      <input
-                        type="number"
-                        name="priceLarge"
-                        defaultValue={editingItem?.prices.large || ''}
-                        required
-                        min="0"
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-red-500 focus:outline-none font-medium"
-                        placeholder="₺"
-                      />
-                    </div>
-                  </div>
+                  )}
 
                   {/* Resim Yükleme */}
                   <div>
@@ -477,6 +656,206 @@ export default function AdminPanel() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Kampanya Form Modal */}
+        {showCampaignForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <h2 className="text-2xl font-black text-gray-900 mb-6">
+                  🎁 Yeni Kampanya Oluştur
+                </h2>
+                
+                <div className="space-y-6">
+                  {/* Kampanya Adı */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Kampanya Adı *
+                    </label>
+                    <input
+                      type="text"
+                      value={campaignName}
+                      onChange={(e) => setCampaignName(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none font-medium"
+                      placeholder="Örn: 2 Pizza + İçecek + Tatlı"
+                    />
+                  </div>
+
+                  {/* Açıklama */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Açıklama *
+                    </label>
+                    <textarea
+                      value={campaignDescription}
+                      onChange={(e) => setCampaignDescription(e.target.value)}
+                      required
+                      rows={3}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none font-medium resize-none"
+                      placeholder="Kampanya detaylarını açıkla..."
+                    />
+                  </div>
+
+                  {/* Ürün Seçimi */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-3">
+                      Kampanyaya Dahil Ürünler *
+                    </label>
+                    <div className="border-2 border-gray-300 rounded-xl p-4 max-h-60 overflow-y-auto">
+                      {menuItems.map(item => (
+                        <label key={item.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.includes(item.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedItems([...selectedItems, item.id])
+                              } else {
+                                setSelectedItems(selectedItems.filter(id => id !== item.id))
+                              }
+                            }}
+                            className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                          />
+                          <div className="flex-1">
+                            <span className="font-bold text-gray-900">{item.name}</span>
+                            <span className="text-sm text-gray-500 ml-2">({categoryLabels[item.category] || item.category})</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    {selectedItems.length === 0 && (
+                      <p className="text-sm text-red-600 mt-2">En az 1 ürün seçmelisiniz</p>
+                    )}
+                  </div>
+
+                  {/* Kampanya Fiyatı */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Kampanya Fiyatı (₺) *
+                    </label>
+                    <input
+                      type="number"
+                      value={campaignPrice}
+                      onChange={(e) => setCampaignPrice(e.target.value)}
+                      required
+                      min="0"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none font-medium"
+                      placeholder="Örn: 800"
+                    />
+                  </div>
+
+                  {/* Resim (Opsiyonel) */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Kampanya Görseli (Opsiyonel)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onloadend = () => {
+                            const img = new Image()
+                            img.onload = () => {
+                              const canvas = document.createElement('canvas')
+                              const maxWidth = 800
+                              const maxHeight = 800
+                              let width = img.width
+                              let height = img.height
+
+                              if (width > height) {
+                                if (width > maxWidth) {
+                                  height = (height * maxWidth) / width
+                                  width = maxWidth
+                                }
+                              } else {
+                                if (height > maxHeight) {
+                                  width = (width * maxHeight) / height
+                                  height = maxHeight
+                                }
+                              }
+
+                              canvas.width = width
+                              canvas.height = height
+                              const ctx = canvas.getContext('2d')
+                              ctx?.drawImage(img, 0, 0, width, height)
+                              setCampaignImage(canvas.toDataURL('image/jpeg', 0.8))
+                            }
+                            img.src = reader.result as string
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-purple-500 focus:outline-none"
+                    />
+                    {campaignImage && (
+                      <div className="mt-4">
+                        <img
+                          src={campaignImage}
+                          alt="Preview"
+                          className="w-full h-48 object-cover rounded-xl border-2 border-gray-300"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Butonlar */}
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (selectedItems.length === 0) {
+                          alert('En az 1 ürün seçmelisiniz')
+                          return
+                        }
+                        const campaign: Campaign = {
+                          id: Date.now(),
+                          name: campaignName,
+                          description: campaignDescription,
+                          price: Number(campaignPrice),
+                          items: selectedItems,
+                          image: campaignImage
+                        }
+                        const success = await saveCampaign(campaign)
+                        if (success) {
+                          setShowCampaignForm(false)
+                          setCampaignName('')
+                          setCampaignDescription('')
+                          setCampaignPrice('')
+                          setSelectedItems([])
+                          setCampaignImage('')
+                          alert('Kampanya başarıyla oluşturuldu!')
+                        } else {
+                          alert('Kampanya oluşturulurken bir hata oluştu.')
+                        }
+                      }}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
+                    >
+                      Kaydet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCampaignForm(false)
+                        setCampaignName('')
+                        setCampaignDescription('')
+                        setCampaignPrice('')
+                        setSelectedItems([])
+                        setCampaignImage('')
+                      }}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-all"
+                    >
+                      İptal
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

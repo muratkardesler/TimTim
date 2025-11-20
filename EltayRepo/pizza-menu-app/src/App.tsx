@@ -12,8 +12,19 @@ interface MenuItem {
   name: string
   description: string
   prices: PizzaSize
-  category: 'pizza'
+  category: string // 'pizza' | 'drink' | 'dessert' | etc.
   image: string
+  is_new?: boolean
+}
+
+interface Campaign {
+  id: number
+  name: string
+  description: string
+  price: number
+  items: number[] // MenuItem id'leri
+  image?: string
+  created_at?: string
 }
 
 // Görsellerden oluşturuldu - dosya isimlerine göre
@@ -168,12 +179,13 @@ const getMenuData = async (): Promise<MenuItem[]> => {
         name: item.name,
         description: item.description,
         prices: {
-          small: item.price_small,
-          medium: item.price_medium,
-          large: item.price_large
+          small: item.price_small || 0,
+          medium: item.price_medium || 0,
+          large: item.price_large || 0
         },
-        category: 'pizza' as const,
-        image: item.image || ''
+        category: item.category || 'pizza',
+        image: item.image || '',
+        is_new: item.is_new || false
       }))
     }
     
@@ -185,26 +197,69 @@ const getMenuData = async (): Promise<MenuItem[]> => {
   }
 }
 
+// Kampanyaları getir
+const getCampaigns = async (): Promise<Campaign[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('timtim_campaigns')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching campaigns:', error)
+      return []
+    }
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      items: item.items || [],
+      image: item.image || '',
+      created_at: item.created_at
+    }))
+  } catch (error) {
+    console.error('Error:', error)
+    return []
+  }
+}
+
 function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadMenu = async () => {
+      setIsLoading(true)
       const data = await getMenuData()
       setMenuItems(data)
+      
+      // Kampanyaları yükle
+      const campaignData = await getCampaigns()
+      setCampaigns(campaignData)
+      
+      setIsLoading(false)
     }
     loadMenu()
   }, [])
 
-  const categories = ['all', 'pizza']
+  // Kategorileri dinamik olarak oluştur
+  const categories = ['all', ...new Set(menuItems.map(item => item.category)), 'campaigns']
   const categoryLabels: Record<string, string> = {
     all: 'Tümü',
-    pizza: 'Pizza'
+    pizza: 'Pizza',
+    drink: 'İçecek',
+    dessert: 'Tatlı',
+    campaigns: 'Kampanyalı Ürünler'
   }
 
   const filteredMenu = selectedCategory === 'all' 
     ? menuItems 
+    : selectedCategory === 'campaigns'
+    ? [] // Kampanyalar ayrı gösterilecek
     : menuItems.filter(item => item.category === selectedCategory)
 
   return (
@@ -255,8 +310,17 @@ function App() {
 
       {/* Menu List - Grid Layout */}
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredMenu.map(item => {
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="relative w-20 h-20 mb-6">
+              <div className="absolute inset-0 border-4 border-red-200 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-red-600 rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-gray-600 text-lg font-semibold">Menü yükleniyor...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredMenu.map(item => {
             // Görsel: base64 ise direkt kullan, değilse path'ten yükle
             const isBase64 = item.image.startsWith('data:image')
             const imageSrc = isBase64 
@@ -289,6 +353,13 @@ function App() {
                     />
                   ) : null}
                   <span className="fallback-emoji text-7xl md:text-8xl" style={{display: item.image ? 'none' : 'block'}}>🍕</span>
+                  
+                  {/* Yeni Ürün Etiketi */}
+                  {item.is_new && (
+                    <div className="absolute top-3 right-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-4 py-1.5 rounded-full font-black text-xs md:text-sm shadow-lg animate-pulse">
+                      ✨ YENİ
+                    </div>
+                  )}
                 </div>
                 
                 {/* Content - Bottom */}
@@ -344,10 +415,10 @@ function App() {
                     ) : (
                       <div className="flex items-center justify-between bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-4 border border-gray-200">
                         <span className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-red-600 to-red-700">
-                          {item.prices.small}₺
+                          {item.prices.small || item.prices.medium || item.prices.large}₺
                         </span>
                         <span className="text-xs md:text-sm text-gray-700 bg-white px-4 py-2 rounded-full font-black uppercase tracking-wider shadow-sm border border-gray-200">
-                          {categoryLabels[item.category]}
+                          {categoryLabels[item.category] || item.category}
                         </span>
                       </div>
                     )}
@@ -356,12 +427,92 @@ function App() {
               </div>
             )
           })}
-        </div>
+          
+          {/* Kampanyalar */}
+          {selectedCategory === 'campaigns' && campaigns.map(campaign => {
+            const campaignItems = menuItems.filter(item => campaign.items.includes(item.id))
+            return (
+              <div
+                key={campaign.id}
+                className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border-2 border-purple-200"
+              >
+                {/* Image */}
+                <div className="w-full h-56 md:h-64 bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center overflow-hidden relative">
+                  {campaign.image ? (
+                    <img 
+                      src={campaign.image} 
+                      alt={campaign.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 p-4 w-full h-full">
+                      {campaignItems.slice(0, 4).map((item, idx) => (
+                        <div key={idx} className="bg-white rounded-lg overflow-hidden">
+                          {item.image && (
+                            <img 
+                              src={item.image.startsWith('data:image') ? item.image : `/pizzas/${item.image.split('/').pop()}`} 
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="absolute top-3 right-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1.5 rounded-full font-black text-xs md:text-sm shadow-lg">
+                    🎁 KAMPANYA
+                  </div>
+                </div>
+                
+                {/* Content */}
+                <div className="p-5 md:p-6">
+                  <h3 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-900 to-pink-900 mb-3">
+                    {campaign.name}
+                  </h3>
+                  <p className="text-sm md:text-base text-gray-700 mb-4 line-clamp-2">
+                    {campaign.description}
+                  </p>
+                  
+                  {/* İçerik Listesi */}
+                  <div className="mb-4">
+                    <p className="text-xs font-bold text-gray-600 mb-2">İçerik:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {campaignItems.map(item => (
+                        <span key={item.id} className="bg-white px-3 py-1 rounded-full text-xs font-bold text-gray-700 border border-gray-200">
+                          {item.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Fiyat */}
+                  <div className="mt-6 pt-5 border-t-2 border-purple-200">
+                    <div className="flex items-center justify-between bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl p-4 shadow-lg">
+                      <div>
+                        <p className="text-xs font-bold opacity-90">Kampanya Fiyatı</p>
+                        <p className="text-3xl md:text-4xl font-black">{campaign.price}₺</p>
+                      </div>
+                      <div className="text-4xl">🎁</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          </div>
+        )}
 
-        {filteredMenu.length === 0 && (
+        {!isLoading && filteredMenu.length === 0 && selectedCategory !== 'campaigns' && (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🍕</div>
             <p className="text-gray-500 text-lg md:text-xl font-semibold">Bu kategoride ürün bulunamadı.</p>
+          </div>
+        )}
+        
+        {!isLoading && selectedCategory === 'campaigns' && campaigns.length === 0 && (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">🎁</div>
+            <p className="text-gray-500 text-lg md:text-xl font-semibold">Henüz kampanya bulunmamaktadır.</p>
           </div>
         )}
       </div>

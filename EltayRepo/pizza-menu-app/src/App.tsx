@@ -27,6 +27,13 @@ interface Campaign {
   created_at?: string
 }
 
+interface Category {
+  id: number
+  name: string
+  label: string
+  display_order: number
+}
+
 // Görsellerden oluşturuldu - dosya isimlerine göre
 const menuData: MenuItem[] = [
   {
@@ -159,8 +166,68 @@ const menuData: MenuItem[] = [
   }
 ]
 
+// Cache utilities
+const CACHE_TTL = 5 * 60 * 1000 // 5 dakika
+const MENU_CACHE_KEY = 'timtim_menu_cache'
+const MENU_CACHE_TIME_KEY = 'timtim_menu_cache_time'
+const CAMPAIGNS_CACHE_KEY = 'timtim_campaigns_cache'
+const CAMPAIGNS_CACHE_TIME_KEY = 'timtim_campaigns_cache_time'
+const CATEGORIES_CACHE_KEY = 'timtim_categories_cache'
+const CATEGORIES_CACHE_TIME_KEY = 'timtim_categories_cache_time'
+
+const getCachedData = <T,>(cacheKey: string, timeKey: string): T | null => {
+  try {
+    const cachedTime = localStorage.getItem(timeKey)
+    const cachedData = localStorage.getItem(cacheKey)
+    
+    if (cachedTime && cachedData) {
+      const now = Date.now()
+      const cacheTime = parseInt(cachedTime, 10)
+      
+      // Cache hala geçerli mi?
+      if (now - cacheTime < CACHE_TTL) {
+        return JSON.parse(cachedData) as T
+      } else {
+        // Cache süresi dolmuş, temizle
+        localStorage.removeItem(cacheKey)
+        localStorage.removeItem(timeKey)
+      }
+    }
+  } catch (error) {
+    console.error('Cache read error:', error)
+  }
+  return null
+}
+
+const setCachedData = <T,>(cacheKey: string, timeKey: string, data: T): void => {
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(data))
+    localStorage.setItem(timeKey, Date.now().toString())
+  } catch (error) {
+    console.error('Cache write error:', error)
+  }
+}
+
+// Cache'i temizle (admin panelde değişiklik yapıldığında kullanılacak)
+export const clearMenuCache = (): void => {
+  localStorage.removeItem(MENU_CACHE_KEY)
+  localStorage.removeItem(MENU_CACHE_TIME_KEY)
+  localStorage.removeItem(CAMPAIGNS_CACHE_KEY)
+  localStorage.removeItem(CAMPAIGNS_CACHE_TIME_KEY)
+  localStorage.removeItem(CATEGORIES_CACHE_KEY)
+  localStorage.removeItem(CATEGORIES_CACHE_TIME_KEY)
+}
+
 // Supabase utilities
-const getMenuData = async (): Promise<MenuItem[]> => {
+const getMenuData = async (forceRefresh = false): Promise<MenuItem[]> => {
+  // Cache'den kontrol et
+  if (!forceRefresh) {
+    const cached = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
+    if (cached) {
+      return cached
+    }
+  }
+
   try {
     const { data, error } = await supabase
       .from('timtim_pizza_menu')
@@ -169,12 +236,13 @@ const getMenuData = async (): Promise<MenuItem[]> => {
     
     if (error) {
       console.error('Error fetching menu:', error)
-      // Hata durumunda default veriyi döndür
-      return menuData
+      // Hata durumunda cache'den döndür veya default veriyi döndür
+      const cached = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
+      return cached || menuData
     }
     
     if (data && data.length > 0) {
-      return data.map(item => ({
+      const menuItems = data.map(item => ({
         id: item.id,
         name: item.name,
         description: item.description,
@@ -187,18 +255,32 @@ const getMenuData = async (): Promise<MenuItem[]> => {
         image: item.image || '',
         is_new: item.is_new || false
       }))
+      
+      // Cache'e kaydet
+      setCachedData(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY, menuItems)
+      return menuItems
     }
     
     // Veri yoksa default veriyi döndür
     return menuData
   } catch (error) {
     console.error('Error:', error)
-    return menuData
+    // Hata durumunda cache'den döndür
+    const cached = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
+    return cached || menuData
   }
 }
 
 // Kampanyaları getir
-const getCampaigns = async (): Promise<Campaign[]> => {
+const getCampaigns = async (forceRefresh = false): Promise<Campaign[]> => {
+  // Cache'den kontrol et
+  if (!forceRefresh) {
+    const cached = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
+    if (cached) {
+      return cached
+    }
+  }
+
   try {
     const { data, error } = await supabase
       .from('timtim_campaigns')
@@ -207,10 +289,12 @@ const getCampaigns = async (): Promise<Campaign[]> => {
     
     if (error) {
       console.error('Error fetching campaigns:', error)
-      return []
+      // Hata durumunda cache'den döndür
+      const cached = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
+      return cached || []
     }
     
-    return (data || []).map(item => ({
+    const campaigns = (data || []).map(item => ({
       id: item.id,
       name: item.name,
       description: item.description,
@@ -219,9 +303,64 @@ const getCampaigns = async (): Promise<Campaign[]> => {
       image: item.image || '',
       created_at: item.created_at
     }))
+    
+    // Cache'e kaydet
+    setCachedData(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY, campaigns)
+    return campaigns
   } catch (error) {
     console.error('Error:', error)
-    return []
+    // Hata durumunda cache'den döndür
+    const cached = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
+    return cached || []
+  }
+}
+
+// Kategorileri getir
+const getCategories = async (forceRefresh = false): Promise<Category[]> => {
+  // Cache'den kontrol et
+  if (!forceRefresh) {
+    const cached = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
+    if (cached) {
+      return cached
+    }
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('timtim_categories')
+      .select('*')
+      .order('display_order', { ascending: true })
+    
+    if (error) {
+      console.error('Error fetching categories:', error)
+      // Hata durumunda cache'den döndür veya default kategorileri döndür
+      const cached = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
+      return cached || [
+        { id: 1, name: 'pizza', label: 'Pizza', display_order: 1 },
+        { id: 2, name: 'drink', label: 'İçecek', display_order: 2 },
+        { id: 3, name: 'dessert', label: 'Tatlı', display_order: 3 }
+      ]
+    }
+    
+    const categories = (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      label: item.label,
+      display_order: item.display_order || 0
+    }))
+    
+    // Cache'e kaydet
+    setCachedData(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY, categories)
+    return categories
+  } catch (error) {
+    console.error('Error:', error)
+    // Hata durumunda cache'den döndür
+    const cached = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
+    return cached || [
+      { id: 1, name: 'pizza', label: 'Pizza', display_order: 1 },
+      { id: 2, name: 'drink', label: 'İçecek', display_order: 2 },
+      { id: 3, name: 'dessert', label: 'Tatlı', display_order: 3 }
+    ]
   }
 }
 
@@ -229,32 +368,57 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadMenu = async () => {
-      setIsLoading(true)
-      const data = await getMenuData()
-      setMenuItems(data)
+      // Önce cache'den hızlıca yükle (eğer varsa)
+      const cachedMenu = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
+      const cachedCampaigns = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
+      const cachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
       
-      // Kampanyaları yükle
-      const campaignData = await getCampaigns()
-      setCampaigns(campaignData)
+      if (cachedMenu) {
+        setMenuItems(cachedMenu)
+        setIsLoading(false) // Cache'den yüklendi, loading'i kapat
+      } else {
+        setIsLoading(true) // Cache yok, loading göster
+      }
       
+      if (cachedCampaigns) {
+        setCampaigns(cachedCampaigns)
+      }
+      
+      if (cachedCategories) {
+        setCategories(cachedCategories)
+      }
+      
+      // Arka planda güncel veriyi çek (cache olsa bile)
+      const [freshMenu, freshCampaigns, freshCategories] = await Promise.all([
+        getMenuData(false), // Cache kontrolü yap
+        getCampaigns(false), // Cache kontrolü yap
+        getCategories(false) // Cache kontrolü yap
+      ])
+      
+      setMenuItems(freshMenu)
+      setCampaigns(freshCampaigns)
+      setCategories(freshCategories)
       setIsLoading(false)
     }
     loadMenu()
   }, [])
 
   // Kategorileri dinamik olarak oluştur
-  const categories = ['all', ...new Set(menuItems.map(item => item.category)), 'campaigns']
   const categoryLabels: Record<string, string> = {
     all: 'Tümü',
-    pizza: 'Pizza',
-    drink: 'İçecek',
-    dessert: 'Tatlı',
-    campaigns: 'Kampanyalı Ürünler'
+    campaigns: 'Kampanyalı Ürünler',
+    ...categories.reduce((acc, cat) => {
+      acc[cat.name] = cat.label
+      return acc
+    }, {} as Record<string, string>)
   }
+  
+  const displayCategories = ['all', ...categories.map(cat => cat.name), 'campaigns']
 
   const filteredMenu = selectedCategory === 'all' 
     ? menuItems 
@@ -291,7 +455,7 @@ function App() {
       <div className="bg-white/95 backdrop-blur-sm shadow-lg sticky top-[80px] md:top-[112px] z-10 py-4 px-4 border-b border-gray-200">
         <div className="container mx-auto">
           <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map(category => (
+            {displayCategories.map(category => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
@@ -301,7 +465,7 @@ function App() {
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
                 }`}
               >
-                {categoryLabels[category]}
+                {categoryLabels[category] || category}
               </button>
             ))}
           </div>

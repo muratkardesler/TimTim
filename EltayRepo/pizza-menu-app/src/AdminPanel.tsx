@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from './supabaseClient'
 import { migrateMenuToSupabase } from './migrateMenu'
+import { clearMenuCache } from './App'
 
 interface PizzaSize {
   small: number
@@ -26,6 +27,13 @@ interface Campaign {
   price: number
   items: number[]
   image?: string
+}
+
+interface Category {
+  id: number
+  name: string
+  label: string
+  display_order: number
 }
 
 // Supabase utilities
@@ -180,6 +188,74 @@ const getCampaigns = async (): Promise<Campaign[]> => {
   }
 }
 
+// Kategori CRUD fonksiyonları
+const saveCategory = async (category: Category): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('timtim_categories')
+      .upsert({
+        id: category.id,
+        name: category.name,
+        label: category.label,
+        display_order: category.display_order || 0,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'name'
+      })
+    
+    if (error) {
+      console.error('Error saving category:', error)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('Error:', error)
+    return false
+  }
+}
+
+const deleteCategory = async (id: number): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('timtim_categories')
+      .delete()
+      .eq('id', id)
+    
+    if (error) {
+      console.error('Error deleting category:', error)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('Error:', error)
+    return false
+  }
+}
+
+const getCategories = async (): Promise<Category[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('timtim_categories')
+      .select('*')
+      .order('display_order', { ascending: true })
+    
+    if (error) {
+      console.error('Error fetching categories:', error)
+      return []
+    }
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      name: item.name,
+      label: item.label,
+      display_order: item.display_order || 0
+    }))
+  } catch (error) {
+    console.error('Error:', error)
+    return []
+  }
+}
+
 const ADMIN_USERNAME = 'timtim'
 const ADMIN_PASSWORD = 'fatih123'
 
@@ -207,6 +283,9 @@ export default function AdminPanel() {
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null)
   const [showCategoryForm, setShowCategoryForm] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryLabel, setNewCategoryLabel] = useState('')
+  const [categories, setCategories] = useState<Category[]>([])
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -225,6 +304,8 @@ export default function AdminPanel() {
     setMenuItems(data)
     const campaignData = await getCampaigns()
     setCampaigns(campaignData)
+    const categoryData = await getCategories()
+    setCategories(categoryData)
   }
 
   const handleLogin = (e: React.FormEvent) => {
@@ -384,7 +465,9 @@ export default function AdminPanel() {
 
     // Arka planda kaydet
     const success = await saveMenuItem(newItem)
-    if (!success) {
+    if (success) {
+      clearMenuCache() // Cache'i temizle
+    } else {
       // Hata durumunda geri al
       await loadMenuData()
       alert('Pizza kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.')
@@ -412,7 +495,9 @@ export default function AdminPanel() {
 
       // Arka planda sil
       const success = await deleteMenuItem(deletedItem.id)
-      if (!success) {
+      if (success) {
+        clearMenuCache() // Cache'i temizle
+      } else {
         // Hata durumunda geri al
         await loadMenuData()
         alert('Pizza silinirken bir hata oluştu. Lütfen tekrar deneyin.')
@@ -455,7 +540,9 @@ export default function AdminPanel() {
 
       // Arka planda sil
       const success = await deleteCampaign(deletedCampaign.id)
-      if (!success) {
+      if (success) {
+        clearMenuCache() // Cache'i temizle
+      } else {
         // Hata durumunda geri al
         await loadMenuData()
         alert('Kampanya silinirken bir hata oluştu. Lütfen tekrar deneyin.')
@@ -471,6 +558,7 @@ export default function AdminPanel() {
     setIsImporting(true)
     try {
       const result = await migrateMenuToSupabase(true) // Resimleri base64'e çevir
+      clearMenuCache() // Cache'i temizle
       alert(`✅ Aktarım tamamlandı!\n${result.successCount} pizza başarıyla kaydedildi.\n${result.errorCount} hata oluştu.`)
       await loadMenuData()
     } catch (error) {
@@ -905,6 +993,7 @@ export default function AdminPanel() {
                         }
                         const success = await saveCampaign(campaign)
                         if (success) {
+                          clearMenuCache() // Cache'i temizle
                           await loadMenuData()
                           setShowCampaignForm(false)
                           setEditingCampaign(null)
@@ -1259,30 +1348,61 @@ export default function AdminPanel() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
-                      Kategori Adı *
+                      Kategori Adı (Teknik) *
                     </label>
                     <input
                       type="text"
                       value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onChange={(e) => setNewCategoryName(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                      required
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none font-medium"
+                      placeholder="Örn: soup, salad (küçük harf, boşluksuz)"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Teknik isim (veritabanında kullanılacak)</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Görünen İsim (Label) *
+                    </label>
+                    <input
+                      type="text"
+                      value={newCategoryLabel}
+                      onChange={(e) => setNewCategoryLabel(e.target.value)}
                       required
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none font-medium"
                       placeholder="Örn: Çorba, Salata"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Menüde görünecek isim</p>
                   </div>
 
                   <div className="flex gap-3 pt-4">
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!newCategoryName.trim()) {
-                          alert('Lütfen kategori adı girin')
+                        if (!newCategoryName.trim() || !newCategoryLabel.trim()) {
+                          alert('Lütfen tüm alanları doldurun')
                           return
                         }
-                        // Kategori ekleme işlemi - şimdilik sadece bilgilendirme
-                        alert(`"${newCategoryName}" kategorisi eklendi! (Not: Kategori ekleme özelliği yakında aktif olacak)`)
-                        setShowCategoryForm(false)
-                        setNewCategoryName('')
+                        
+                        const category: Category = {
+                          id: Date.now(),
+                          name: newCategoryName.trim(),
+                          label: newCategoryLabel.trim(),
+                          display_order: categories.length + 1
+                        }
+                        
+                        const success = await saveCategory(category)
+                        if (success) {
+                          clearMenuCache() // Cache'i temizle
+                          await loadMenuData()
+                          setShowCategoryForm(false)
+                          setNewCategoryName('')
+                          setNewCategoryLabel('')
+                          alert(`"${newCategoryLabel}" kategorisi başarıyla eklendi!`)
+                        } else {
+                          alert('Kategori eklenirken bir hata oluştu. Lütfen tekrar deneyin.')
+                        }
                       }}
                       className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg"
                     >
@@ -1293,12 +1413,123 @@ export default function AdminPanel() {
                       onClick={() => {
                         setShowCategoryForm(false)
                         setNewCategoryName('')
+                        setNewCategoryLabel('')
                       }}
                       className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-all"
                     >
                       İptal
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Kategoriler Listesi */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-black text-gray-900 mb-6">📁 Kategoriler</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {categories.map(category => (
+              <div
+                key={category.id}
+                className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl shadow-lg overflow-hidden border-2 border-blue-200 p-5"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900">{category.label}</h3>
+                    <p className="text-sm text-gray-600 font-mono">{category.name}</p>
+                  </div>
+                  <div className="text-3xl">📁</div>
+                </div>
+                
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={async () => {
+                      const newLabel = prompt('Yeni görünen isim:', category.label)
+                      if (newLabel && newLabel.trim()) {
+                        const updatedCategory: Category = {
+                          ...category,
+                          label: newLabel.trim()
+                        }
+                        const success = await saveCategory(updatedCategory)
+                        if (success) {
+                          clearMenuCache()
+                          await loadMenuData()
+                          alert('Kategori başarıyla güncellendi!')
+                        } else {
+                          alert('Kategori güncellenirken bir hata oluştu.')
+                        }
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all"
+                  >
+                    Düzenle
+                  </button>
+                  <button
+                    onClick={() => setCategoryToDelete(category)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-all"
+                  >
+                    Sil
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {categories.length === 0 && (
+            <div className="text-center py-16 bg-white rounded-2xl shadow-lg">
+              <div className="text-6xl mb-4">📁</div>
+              <p className="text-gray-500 text-lg font-semibold mb-4">Henüz kategori eklenmemiş</p>
+              <button
+                onClick={() => setShowCategoryForm(true)}
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-cyan-700 transition-all shadow-lg"
+              >
+                İlk Kategoriyi Ekle
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Kategori Silme Onay Modalı */}
+        {categoryToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full transform transition-all">
+              <div className="p-6">
+                <h3 className="text-2xl font-black text-gray-900 mb-4">Kategoriyi Sil</h3>
+                <p className="text-gray-700 mb-6">
+                  <strong>{categoryToDelete.label}</strong> kategorisini silmek istediğinizden emin misiniz?
+                </p>
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-6">
+                  <p className="text-sm text-red-800 font-semibold">
+                    <strong>Dikkat:</strong> Bu kategori silinirse, menüden tamamen kaldırılacak ve bu işlem geri alınamaz. Bu kategoriye ait ürünler kategorisiz kalacaktır.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setCategoryToDelete(null)}
+                    className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition-all"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const deletedCategory = categoryToDelete
+                      setCategoryToDelete(null)
+                      
+                      const success = await deleteCategory(deletedCategory.id)
+                      if (success) {
+                        clearMenuCache()
+                        await loadMenuData()
+                        alert('Kategori başarıyla silindi!')
+                      } else {
+                        alert('Kategori silinirken bir hata oluştu. Lütfen tekrar deneyin.')
+                      }
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold hover:from-red-700 hover:to-red-800 transition-all shadow-lg"
+                  >
+                    Evet, Sil
+                  </button>
                 </div>
               </div>
             </div>

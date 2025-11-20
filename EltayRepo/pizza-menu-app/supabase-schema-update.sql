@@ -18,3 +18,24 @@ CREATE TABLE IF NOT EXISTS timtim_campaigns (
 -- Index ekle
 CREATE INDEX IF NOT EXISTS idx_campaigns_created_at ON timtim_campaigns(created_at DESC);
 
+-- 3. timtim_categories tablosu oluştur
+CREATE TABLE IF NOT EXISTS timtim_categories (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  label TEXT NOT NULL, -- Görünen isim (Türkçe)
+  display_order INTEGER DEFAULT 0, -- Sıralama için
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Varsayılan kategorileri ekle
+INSERT INTO timtim_categories (name, label, display_order) 
+VALUES 
+  ('pizza', 'Pizza', 1),
+  ('drink', 'İçecek', 2),
+  ('dessert', 'Tatlı', 3)
+ON CONFLICT (name) DO NOTHING;
+
+-- Index ekle
+CREATE INDEX IF NOT EXISTS idx_categories_display_order ON timtim_categories(display_order);
+

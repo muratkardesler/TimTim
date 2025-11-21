@@ -365,7 +365,7 @@ const getCategories = async (forceRefresh = false): Promise<Category[]> => {
 }
 
 function App() {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string>('pizza')
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [categories, setCategories] = useState<Category[]>([])

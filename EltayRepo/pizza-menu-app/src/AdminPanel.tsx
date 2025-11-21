@@ -18,6 +18,7 @@ interface MenuItem {
   category: string
   image: string
   is_new?: boolean
+  display_order?: number
 }
 
 interface Campaign {
@@ -42,6 +43,7 @@ const getMenuData = async (): Promise<MenuItem[]> => {
     const { data, error } = await supabase
       .from('timtim_pizza_menu')
       .select('*')
+      .order('display_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
     
     if (error) {
@@ -60,7 +62,8 @@ const getMenuData = async (): Promise<MenuItem[]> => {
       },
       category: item.category || 'pizza',
       image: item.image || '',
-      is_new: item.is_new || false
+      is_new: item.is_new || false,
+      display_order: item.display_order || 0
     }))
   } catch (error) {
     console.error('Error:', error)
@@ -81,6 +84,7 @@ const saveMenuItem = async (item: MenuItem): Promise<boolean> => {
         price_large: item.prices.large,
         category: item.category || 'pizza',
         is_new: item.is_new || false,
+        display_order: item.display_order || 0,
         image: item.image,
         updated_at: new Date().toISOString()
       }, {
@@ -286,6 +290,7 @@ export default function AdminPanel() {
   const [newCategoryLabel, setNewCategoryLabel] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
+  const [draggedItem, setDraggedItem] = useState<MenuItem | null>(null)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -432,6 +437,61 @@ export default function AdminPanel() {
         img.src = reader.result as string
       }
       reader.readAsDataURL(file)
+    }
+  }
+
+  const handleDragStart = (item: MenuItem) => {
+    setDraggedItem(item)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleDrop = async (targetItem: MenuItem) => {
+    if (!draggedItem || draggedItem.id === targetItem.id) {
+      setDraggedItem(null)
+      return
+    }
+
+    // Sıralamayı güncelle
+    const draggedIndex = menuItems.findIndex(item => item.id === draggedItem.id)
+    const targetIndex = menuItems.findIndex(item => item.id === targetItem.id)
+    
+    const newItems = [...menuItems]
+    const [removed] = newItems.splice(draggedIndex, 1)
+    newItems.splice(targetIndex, 0, removed)
+    
+    // display_order'ları güncelle
+    const updatedItems = newItems.map((item, index) => ({
+      ...item,
+      display_order: index + 1
+    }))
+    
+    // Optimistic update
+    setMenuItems(updatedItems)
+    setDraggedItem(null)
+    
+    // Supabase'e kaydet
+    try {
+      const updates = updatedItems.map(item => ({
+        id: item.id,
+        display_order: item.display_order
+      }))
+      
+      for (const update of updates) {
+        await supabase
+          .from('timtim_pizza_menu')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id)
+      }
+      
+      clearMenuCache()
+    } catch (error) {
+      console.error('Error updating order:', error)
+      // Hata durumunda geri al
+      await loadMenuData()
+      alert('Sıralama güncellenirken bir hata oluştu.')
     }
   }
 
@@ -1139,8 +1199,23 @@ export default function AdminPanel() {
           {menuItems.map(item => (
             <div
               key={item.id}
-              className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all"
+              draggable
+              onDragStart={() => handleDragStart(item)}
+              onDragOver={handleDragOver}
+              onDrop={() => handleDrop(item)}
+              className={`bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all cursor-move ${
+                draggedItem?.id === item.id ? 'opacity-50' : ''
+              }`}
             >
+              {/* Drag Handle */}
+              <div className="bg-gradient-to-r from-gray-100 to-gray-200 px-4 py-2 flex items-center justify-center cursor-grab active:cursor-grabbing">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                  </svg>
+                  <span className="text-xs font-bold">Sürükle-Bırak ile Sırala</span>
+                </div>
+              </div>
               {/* Görsel */}
               <div className="w-full h-48 bg-gray-200 overflow-hidden">
                 {item.image ? (

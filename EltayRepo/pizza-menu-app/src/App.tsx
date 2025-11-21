@@ -15,6 +15,7 @@ interface MenuItem {
   category: string // 'pizza' | 'drink' | 'dessert' | etc.
   image: string
   is_new?: boolean
+  display_order?: number
 }
 
 interface Campaign {
@@ -232,6 +233,7 @@ const getMenuData = async (forceRefresh = false): Promise<MenuItem[]> => {
     const { data, error } = await supabase
       .from('timtim_pizza_menu')
       .select('*')
+      .order('display_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
     
     if (error) {
@@ -253,7 +255,8 @@ const getMenuData = async (forceRefresh = false): Promise<MenuItem[]> => {
         },
         category: item.category || 'pizza',
         image: item.image || '',
-        is_new: item.is_new || false
+        is_new: item.is_new || false,
+        display_order: item.display_order || 0
       }))
       
       // Cache'e kaydet

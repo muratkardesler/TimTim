@@ -254,108 +254,38 @@ function FlameIcon({ className = 'w-5 h-5', strokeOnly = false }: { className?: 
   )
 }
 
-function BrandLogo({ size = 'md', variant = 'dark' }: { size?: 'sm' | 'md' | 'lg' | 'xl' | 'splash'; variant?: 'dark' | 'light' }) {
+function BrandLogo({ size = 'md', onDark = false }: { size?: 'sm' | 'md' | 'lg'; onDark?: boolean }) {
   const sizes = {
-    sm: { wrap: 'gap-0.5', flame: 'w-3 h-3 mb-0.5', top: 'text-base', bottom: 'text-[10px] tracking-[0.35em]' },
-    md: { wrap: 'gap-1', flame: 'w-4 h-4 mb-0.5', top: 'text-xl', bottom: 'text-[11px] tracking-[0.4em]' },
-    lg: { wrap: 'gap-1', flame: 'w-6 h-6 mb-1', top: 'text-3xl', bottom: 'text-sm tracking-[0.45em]' },
-    xl: { wrap: 'gap-2', flame: 'w-10 h-10 mb-1', top: 'text-5xl md:text-6xl', bottom: 'text-base tracking-[0.5em]' },
-    splash: { wrap: 'gap-3', flame: 'w-14 h-14 mb-2', top: 'text-6xl md:text-7xl', bottom: 'text-lg md:text-xl tracking-[0.55em]' }
+    sm: 'h-8 md:h-9',
+    md: 'h-11 md:h-12',
+    lg: 'h-14 md:h-16'
   }
-  const s = sizes[size]
-  const topColor = variant === 'light' ? 'text-white' : 'text-brand-dark'
+  const padding = {
+    sm: 'px-3 py-1.5',
+    md: 'px-4 py-2',
+    lg: 'px-5 py-2.5'
+  }
+
+  if (onDark) {
+    return (
+      <div className={`inline-flex items-center bg-white rounded-2xl shadow-soft ${padding[size]}`}>
+        <img
+          src="/logo-timtim.png"
+          alt="TimTim Pizza"
+          className={`${sizes[size]} w-auto object-contain select-none`}
+          draggable={false}
+        />
+      </div>
+    )
+  }
 
   return (
-    <div className={`inline-flex flex-col items-center ${s.wrap} leading-none select-none`}>
-      <FlameIcon className={s.flame} />
-      <div className={`font-display font-bold ${topColor} ${s.top} tracking-tight`}>TIMTIM</div>
-      <div className={`font-display font-semibold text-brand-red ${s.bottom} uppercase`}>Pizza</div>
-    </div>
-  )
-}
-
-const SPLASH_MIN_MS = 1100
-const SPLASH_MAX_MS = 2500
-
-function SplashScreen({ onDone, dataReady }: { onDone: () => void; dataReady: boolean }) {
-  const mountedAt = useRef(Date.now())
-  const closedRef = useRef(false)
-
-  useEffect(() => {
-    const close = () => {
-      if (closedRef.current) return
-      closedRef.current = true
-      onDone()
-    }
-
-    const maxTimer = setTimeout(close, SPLASH_MAX_MS)
-
-    return () => {
-      clearTimeout(maxTimer)
-    }
-  }, [onDone])
-
-  useEffect(() => {
-    if (!dataReady || closedRef.current) return
-    const elapsed = Date.now() - mountedAt.current
-    const remaining = Math.max(0, SPLASH_MIN_MS - elapsed)
-    const t = setTimeout(() => {
-      if (!closedRef.current) {
-        closedRef.current = true
-        onDone()
-      }
-    }, remaining)
-    return () => clearTimeout(t)
-  }, [dataReady, onDone])
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black"
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.45, ease: 'easeInOut' }}
-    >
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(60% 50% at 30% 70%, rgba(255,255,255,0.10), transparent 70%), radial-gradient(50% 40% at 70% 30%, rgba(255,255,255,0.07), transparent 70%)'
-        }}
-        animate={{ opacity: [0.5, 1, 0.7, 0.9] }}
-        transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
-      />
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(35% 25% at 50% 55%, rgba(214,40,40,0.20), transparent 70%), radial-gradient(20% 18% at 35% 45%, rgba(255,182,39,0.14), transparent 70%)'
-        }}
-        animate={{ opacity: [0.4, 0.95, 0.5], scale: [1, 1.08, 1.02] }}
-        transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
-      />
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(30% 20% at 60% 80%, rgba(180,180,180,0.12), transparent 70%), radial-gradient(28% 22% at 25% 80%, rgba(220,220,220,0.10), transparent 70%)'
-        }}
-        animate={{ y: [10, -10, 5], opacity: [0.35, 0.7, 0.4] }}
-        transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
-      />
-
-      <motion.div
-        className="relative z-10"
-        initial={{ opacity: 0, scale: 0.94, filter: 'blur(10px)' }}
-        animate={{
-          opacity: 1,
-          scale: 1,
-          filter: 'blur(0px)'
-        }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <BrandLogo size="splash" variant="light" />
-      </motion.div>
-    </motion.div>
+    <img
+      src="/logo-timtim.png"
+      alt="TimTim Pizza"
+      className={`${sizes[size]} w-auto object-contain select-none`}
+      draggable={false}
+    />
   )
 }
 
@@ -368,10 +298,7 @@ function StickyHeader({ scrolled, onMenuClick }: { scrolled: boolean; onMenuClic
           : 'bg-transparent border-b border-transparent'
       }`}
     >
-      <div className="max-w-6xl mx-auto px-4 md:px-8 lg:px-10 h-16 md:h-20 flex items-center justify-between">
-        <a href="/" className="flex items-center">
-          <BrandLogo size="sm" variant={scrolled ? 'dark' : 'light'} />
-        </a>
+      <div className="max-w-6xl mx-auto px-4 md:px-8 lg:px-10 h-16 md:h-20 flex items-center justify-end">
         <button
           onClick={onMenuClick}
           className={`inline-flex items-center gap-2 px-4 md:px-5 py-2 md:py-2.5 rounded-full text-xs md:text-sm font-semibold tracking-[0.2em] uppercase transition-all duration-300 ${
@@ -394,78 +321,58 @@ function StickyHeader({ scrolled, onMenuClick }: { scrolled: boolean; onMenuClic
 
 function Hero() {
   return (
-    <section
-      className="relative w-full overflow-hidden bg-[#0A0606]"
-    >
-      <motion.div
+    <section className="relative w-full overflow-hidden bg-[#0A0606] h-[360px] sm:h-[400px] md:h-[440px] lg:h-[460px]">
+      <div
         className="absolute inset-0 pointer-events-none"
-        initial={{ scale: 1.06, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
         style={{
-          backgroundImage: 'url(/hero-pizza.png)',
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover',
-          backgroundPosition: 'right center'
+          background:
+            'radial-gradient(55% 80% at 85% 35%, rgba(214,40,40,0.32), transparent 65%)'
+        }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none opacity-70"
+        style={{
+          background:
+            'radial-gradient(40% 60% at 95% 50%, rgba(255,80,40,0.18), transparent 70%)'
+        }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(10,6,6,0.3) 0%, rgba(10,6,6,0) 25%, rgba(10,6,6,0) 75%, rgba(10,6,6,0.55) 100%)'
         }}
       />
 
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(90deg, #0A0606 0%, rgba(10,6,6,0.95) 22%, rgba(10,6,6,0.65) 42%, rgba(10,6,6,0.2) 60%, rgba(10,6,6,0) 78%)'
-        }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(10,6,6,0.45) 0%, rgba(10,6,6,0) 22%, rgba(10,6,6,0) 75%, rgba(10,6,6,0.55) 100%)'
-        }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none opacity-60"
-        style={{
-          background:
-            'radial-gradient(80% 100% at 80% 50%, rgba(255,140,40,0.10), transparent 60%)'
-        }}
-      />
-
-      <div className="relative max-w-6xl mx-auto px-5 md:px-10 lg:px-12 pt-24 md:pt-28 pb-10 md:pb-12">
-        <div className="relative z-10 min-h-[280px] md:min-h-[380px] lg:min-h-[440px] flex flex-col justify-center max-w-xl">
+      <div className="relative z-10 max-w-6xl mx-auto h-full px-5 md:px-10 lg:px-12 pt-24 md:pt-28 pb-10 md:pb-12">
+        <div className="h-full flex flex-col justify-center max-w-xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
           >
-            <h1 className="font-display font-bold text-5xl sm:text-6xl md:text-7xl lg:text-[92px] leading-[0.95] text-white mb-5 md:mb-6 tracking-tight drop-shadow-[0_4px_18px_rgba(0,0,0,0.65)]">
-              TIMTIM
-              <br />
-              <span className="text-brand-red">PIZZA</span>
+            <h1
+              className="font-display font-bold text-5xl sm:text-6xl md:text-7xl lg:text-[88px] leading-[0.95] tracking-tight drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]"
+            >
+              <span className="block text-brand-red">TiMTiM</span>
+              <span className="block text-white">Pizza</span>
             </h1>
-            <div className="inline-flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] md:text-sm text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
-              <span className="inline-flex items-center gap-2">
-                <CategoryIcon name="pizza" className="w-4 h-4 text-brand-red" />
-                <span className="font-medium">Pizza</span>
-              </span>
-              <span className="text-brand-red/70">•</span>
-              <span className="inline-flex items-center gap-2">
-                <CategoryIcon name="drink" className="w-4 h-4 text-brand-red" />
-                <span className="font-medium">İçecek</span>
-              </span>
-              <span className="text-brand-red/70">•</span>
-              <span className="inline-flex items-center gap-2">
-                <CategoryIcon name="dessert" className="w-4 h-4 text-brand-red" />
-                <span className="font-medium">Tatlı</span>
-              </span>
+
+            <div className="mt-5 h-[3px] w-14 bg-brand-red rounded-full" />
+
+            <div className="mt-4 inline-flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] md:text-sm text-white/85 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
+              <span className="font-medium tracking-wide">Pizza</span>
+              <span className="text-brand-red/80">•</span>
+              <span className="font-medium tracking-wide">İçecek</span>
+              <span className="text-brand-red/80">•</span>
+              <span className="font-medium tracking-wide">Tatlı</span>
             </div>
           </motion.div>
         </div>
       </div>
 
       <div
-        className="absolute inset-x-0 bottom-0 h-8 pointer-events-none z-10"
+        className="absolute inset-x-0 bottom-0 h-8 pointer-events-none z-20"
         style={{
           background: 'linear-gradient(to bottom, transparent, #FAF7F2)'
         }}
@@ -565,44 +472,24 @@ function CategoryTabs({
   )
 }
 
-function PriceBadge({ item }: { item: MenuItem }) {
-  const isPizza = item.category === 'pizza'
-  const minPrice = isPizza
-    ? Math.min(...[item.prices.small, item.prices.medium, item.prices.large].filter(p => p > 0))
-    : (item.prices.small || item.prices.medium || item.prices.large)
-
-  if (!minPrice || !isFinite(minPrice)) return null
-
-  return (
-    <div className="flex flex-col items-start leading-none">
-      {isPizza && (
-        <span className="text-[9px] md:text-[10px] uppercase tracking-[0.18em] text-brand-muted font-medium mb-1">
-          Başlangıç
-        </span>
-      )}
-      <span className="font-display text-[26px] md:text-[30px] text-brand-red font-bold leading-none">
-        {minPrice}
-        <span className="text-lg md:text-xl ml-0.5">₺</span>
-      </span>
-    </div>
-  )
-}
-
-function ProductCard({
-  item,
-  onClick,
-  index
-}: {
-  item: MenuItem
-  onClick: () => void
-  index: number
-}) {
+function ProductCard({ item, index }: { item: MenuItem; index: number }) {
   const imageSrc = resolveImage(item.image)
+  const isPizza = item.category === 'pizza'
+  const sizes = isPizza
+    ? [
+        { label: 'Küçük', dim: '24 cm', price: item.prices.small },
+        { label: 'Orta', dim: '28 cm', price: item.prices.medium },
+        { label: 'Büyük', dim: '32 cm', price: item.prices.large }
+      ].filter(s => s.price > 0)
+    : []
+
+  const singlePrice = !isPizza
+    ? (item.prices.small || item.prices.medium || item.prices.large)
+    : 0
 
   return (
-    <motion.button
-      onClick={onClick}
-      className="group relative w-full text-left bg-brand-card rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-500 border border-brand-line/60 hover:border-brand-red/30"
+    <motion.div
+      className="group relative w-full bg-brand-card rounded-2xl overflow-hidden shadow-card border border-brand-line/60"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
@@ -610,17 +497,13 @@ function ProductCard({
         delay: Math.min(index * 0.04, 0.32),
         ease: [0.22, 1, 0.36, 1]
       }}
-      whileTap={{ scale: 0.985 }}
     >
-      <div className="relative w-full aspect-[4/3] overflow-hidden bg-brand-bg">
+      <div className="relative w-full aspect-[4/3] overflow-hidden bg-white">
         {imageSrc ? (
-          <motion.img
+          <img
             src={imageSrc}
             alt={item.name}
             className="absolute inset-0 w-full h-full object-cover"
-            initial={{ scale: 1.04 }}
-            whileHover={{ scale: 1.1 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             draggable={false}
             onError={(e) => {
               e.currentTarget.style.display = 'none'
@@ -639,14 +522,6 @@ function ProductCard({
           Görsel yok
         </div>
 
-        <div
-          className="absolute inset-x-0 bottom-0 h-24 pointer-events-none"
-          style={{
-            background:
-              'linear-gradient(to top, rgba(26,26,26,0.35), rgba(26,26,26,0.05) 60%, transparent)'
-          }}
-        />
-
         {item.is_new && (
           <div className="absolute top-3 left-3 bg-brand-red text-white text-[10px] font-bold tracking-[0.18em] uppercase px-2.5 py-1 rounded-full shadow-[0_4px_10px_-2px_rgba(214,40,40,0.55)] z-10">
             Yeni
@@ -654,25 +529,52 @@ function ProductCard({
         )}
       </div>
 
-      <div className="px-4 md:px-5 pt-4 pb-4">
-        <h3 className="font-display font-semibold text-lg md:text-xl text-brand-dark mb-1.5 leading-tight tracking-tight line-clamp-1">
+      <div className="px-5 pt-5 pb-5 md:px-6 md:pt-6 md:pb-6 flex flex-col">
+        <h3 className="font-display font-bold text-xl md:text-2xl text-brand-dark mb-2 leading-tight tracking-tight">
           {item.name}
         </h3>
-        <p className="text-[13px] md:text-sm text-brand-muted leading-snug line-clamp-2 mb-3 min-h-[2.4em]">
+        <p className="text-[13px] md:text-sm text-brand-muted leading-relaxed mb-5">
           {item.description}
         </p>
 
-        <div className="flex items-end justify-between pt-3 border-t border-brand-line">
-          <PriceBadge item={item} />
-          <span className="inline-flex items-center gap-1 text-xs md:text-sm text-brand-dark group-hover:text-brand-red transition-colors font-semibold pb-0.5">
-            İncele
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </span>
-        </div>
+        {isPizza && sizes.length > 0 ? (
+          <div className="mt-auto pt-4 border-t border-brand-line">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-brand-dark/70 font-bold mb-3">
+              Boyut ve Fiyatlar
+            </div>
+            <div className="space-y-2">
+              {sizes.map(s => (
+                <div
+                  key={s.label}
+                  className="flex items-center justify-between bg-brand-bg/60 border border-brand-line rounded-xl px-3.5 py-2.5"
+                >
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-display font-semibold text-[15px] md:text-base text-brand-dark">
+                      {s.label}
+                    </span>
+                    <span className="text-[11px] md:text-xs text-brand-muted">{s.dim}</span>
+                  </div>
+                  <span className="font-display text-lg md:text-xl text-brand-red font-bold leading-none">
+                    {s.price}
+                    <span className="text-sm ml-0.5">₺</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : singlePrice ? (
+          <div className="mt-auto pt-4 border-t border-brand-line flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-[0.22em] text-brand-dark/70 font-bold">
+              Fiyat
+            </span>
+            <span className="font-display text-2xl md:text-[28px] text-brand-red font-bold leading-none">
+              {singlePrice}
+              <span className="text-base md:text-lg ml-0.5">₺</span>
+            </span>
+          </div>
+        ) : null}
       </div>
-    </motion.button>
+    </motion.div>
   )
 }
 
@@ -733,236 +635,43 @@ function CampaignCard({
         </div>
       </div>
 
-      <div className="px-4 md:px-5 pt-4 pb-4">
-        <h3 className="font-display font-semibold text-lg md:text-xl text-brand-dark mb-1.5 leading-tight line-clamp-1">
+      <div className="px-5 pt-5 pb-5 md:px-6 md:pt-6 md:pb-6 flex flex-col">
+        <h3 className="font-display font-bold text-xl md:text-2xl text-brand-dark mb-2 leading-tight">
           {campaign.name}
         </h3>
-        <p className="text-[13px] md:text-sm text-brand-muted leading-snug line-clamp-2 mb-3">
+        <p className="text-[13px] md:text-sm text-brand-muted leading-relaxed mb-4">
           {campaign.description}
         </p>
 
         {items.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {items.map(m => (
-              <span
-                key={m.id}
-                className="text-[11px] text-brand-dark/70 bg-brand-bg border border-brand-line px-2 py-0.5 rounded-full"
-              >
-                {m.name}
-              </span>
-            ))}
+          <div className="mb-5">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-brand-dark/70 font-bold mb-2">
+              İçerik
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {items.map(m => (
+                <span
+                  key={m.id}
+                  className="text-[11px] md:text-xs text-brand-dark/80 bg-brand-bg border border-brand-line px-2.5 py-1 rounded-full"
+                >
+                  {m.name}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
-        <div className="flex items-end justify-between pt-3 border-t border-brand-line">
-          <div className="flex flex-col items-start leading-none">
-            <span className="text-[9px] md:text-[10px] uppercase tracking-[0.18em] text-brand-muted font-medium mb-1">
-              Kampanya
-            </span>
-            <span className="font-display text-[28px] md:text-[32px] text-brand-red font-bold leading-none">
-              {campaign.price}
-              <span className="text-lg md:text-xl ml-0.5">₺</span>
-            </span>
-          </div>
+        <div className="mt-auto pt-4 border-t border-brand-line flex items-end justify-between">
+          <span className="text-[11px] uppercase tracking-[0.22em] text-brand-dark/70 font-bold">
+            Kampanya Fiyatı
+          </span>
+          <span className="font-display text-[28px] md:text-[32px] text-brand-red font-bold leading-none">
+            {campaign.price}
+            <span className="text-lg md:text-xl ml-0.5">₺</span>
+          </span>
         </div>
       </div>
     </motion.div>
-  )
-}
-
-function ProductDetailSheet({
-  item,
-  onClose,
-  categoryLabel
-}: {
-  item: MenuItem | null
-  onClose: () => void
-  categoryLabel: string
-}) {
-  const isPizza = item?.category === 'pizza'
-  const sizes = isPizza && item
-    ? [
-        { label: 'Küçük', dim: '24 cm', price: item.prices.small },
-        { label: 'Orta', dim: '28 cm', price: item.prices.medium },
-        { label: 'Büyük', dim: '32 cm', price: item.prices.large }
-      ].filter(s => s.price > 0)
-    : []
-
-  const [selectedSize, setSelectedSize] = useState<string>('')
-
-  useEffect(() => {
-    if (sizes.length > 0) {
-      const min = sizes.reduce((a, b) => (a.price <= b.price ? a : b))
-      setSelectedSize(min.label)
-    } else {
-      setSelectedSize('')
-    }
-  }, [item?.id])
-
-  useEffect(() => {
-    if (item) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [item])
-
-  return (
-    <AnimatePresence>
-      {item && (
-        <>
-          <motion.div
-            className="fixed inset-0 z-40 bg-brand-dark/45 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            onClick={onClose}
-          />
-
-          <motion.div
-            className="fixed z-50 left-0 right-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <motion.div
-              className="bg-brand-card w-full md:max-w-4xl lg:max-w-5xl rounded-t-3xl md:rounded-3xl shadow-sheet overflow-hidden flex flex-col md:flex-row max-h-[92vh] md:max-h-[86vh] md:min-h-[520px]"
-              initial={{ y: '100%', opacity: 0.8, scale: 0.98 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: '100%', opacity: 0 }}
-              transition={{ type: 'spring', damping: 32, stiffness: 320 }}
-              drag="y"
-              dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={{ top: 0, bottom: 0.4 }}
-              onDragEnd={(_, info) => {
-                if (info.offset.y > 120 || info.velocity.y > 600) onClose()
-              }}
-            >
-              <div className="md:hidden flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
-                <div className="w-10 h-1.5 bg-brand-line rounded-full" />
-              </div>
-
-              <div className="relative w-full md:w-1/2 lg:w-[55%] aspect-[5/3] md:aspect-auto md:h-auto overflow-hidden flex-shrink-0 bg-white">
-                {item.image ? (
-                  <img
-                    src={resolveImage(item.image)}
-                    alt={item.name}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-brand-muted">
-                    Görsel yok
-                  </div>
-                )}
-                {item.is_new && (
-                  <div className="absolute top-4 left-4 bg-brand-red text-white text-[10px] font-bold tracking-[0.18em] uppercase px-2.5 py-1 rounded-full shadow-[0_4px_10px_-2px_rgba(214,40,40,0.55)] z-10">
-                    Yeni
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={onClose}
-                aria-label="Kapat"
-                className="absolute top-3 right-3 md:top-4 md:right-4 w-10 h-10 rounded-full bg-white/95 backdrop-blur shadow-soft flex items-center justify-center text-brand-dark hover:bg-white hover:text-brand-red transition-colors z-20"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-
-              <div className="flex-1 flex flex-col overflow-y-auto bg-brand-card">
-                <div className="px-5 md:px-8 lg:px-10 pt-5 md:pt-10 pb-6 md:pb-8 flex-1 flex flex-col">
-                  <div className="flex items-center gap-2 text-[10px] md:text-[11px] uppercase tracking-[0.28em] text-brand-red font-semibold mb-3">
-                    <FlameIcon className="w-3.5 h-3.5" />
-                    {categoryLabel}
-                  </div>
-                  <h2 className="font-display font-bold text-2xl md:text-[34px] lg:text-4xl text-brand-dark leading-[1.1] mb-3 md:mb-4">
-                    {item.name}
-                  </h2>
-                  <p className="text-sm md:text-[15px] text-brand-muted leading-relaxed mb-5 md:mb-6">
-                    {item.description}
-                  </p>
-
-                  <div className="border-t border-brand-line mb-5 md:mb-6" />
-
-                  {sizes.length > 0 ? (
-                    <div>
-                      <div className="text-[10px] md:text-[11px] uppercase tracking-[0.28em] text-brand-dark font-bold mb-3 md:mb-4">
-                        Boyut Seçenekleri
-                      </div>
-                      <div className="space-y-2.5">
-                        {sizes.map(s => {
-                          const active = selectedSize === s.label
-                          return (
-                            <button
-                              key={s.label}
-                              onClick={() => setSelectedSize(s.label)}
-                              className={`w-full flex items-center justify-between rounded-xl px-4 md:px-5 py-3.5 md:py-4 transition-all duration-200 border ${
-                                active
-                                  ? 'bg-brand-red/5 border-brand-red shadow-[0_2px_10px_-2px_rgba(214,40,40,0.22)]'
-                                  : 'bg-brand-bg/60 border-brand-line hover:border-brand-red/40 hover:bg-white'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3 md:gap-4">
-                                <span
-                                  className={`relative w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
-                                    active ? 'border-brand-red' : 'border-brand-line'
-                                  }`}
-                                >
-                                  {active && (
-                                    <motion.span
-                                      layoutId="size-dot"
-                                      className="block w-2.5 h-2.5 rounded-full bg-brand-red"
-                                      transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-                                    />
-                                  )}
-                                </span>
-                                <div className="flex items-baseline gap-2.5 md:gap-3">
-                                  <span className="font-display font-semibold text-base md:text-lg text-brand-dark">
-                                    {s.label}
-                                  </span>
-                                  <span className="text-xs md:text-sm text-brand-muted">{s.dim}</span>
-                                </div>
-                              </div>
-                              <span className="font-display text-lg md:text-xl text-brand-red font-bold">
-                                {s.price}
-                                <span className="text-sm ml-0.5">₺</span>
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-brand-muted">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" />
-                          <line x1="12" y1="16" x2="12" y2="12" />
-                          <line x1="12" y1="8" x2="12.01" y2="8" />
-                        </svg>
-                        Fiyatlar seçilen boyuta göre değişmektedir.
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between bg-brand-red/5 border border-brand-red/30 rounded-xl px-5 py-4">
-                      <span className="text-brand-dark font-semibold">Fiyat</span>
-                      <span className="font-display text-2xl md:text-3xl text-brand-red font-bold">
-                        {item.prices.small || item.prices.medium || item.prices.large}
-                        <span className="text-lg ml-0.5">₺</span>
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
   )
 }
 
@@ -985,16 +694,11 @@ function CardSkeleton() {
 }
 
 function App() {
-  const [showSplash, setShowSplash] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return sessionStorage.getItem('timtim_splash_seen') !== '1'
-  })
   const [selectedCategory, setSelectedCategory] = useState<string>('pizza')
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
   const [scrolled, setScrolled] = useState(false)
   const menuSectionRef = useRef<HTMLDivElement | null>(null)
 
@@ -1045,11 +749,6 @@ function App() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const handleSplashDone = () => {
-    sessionStorage.setItem('timtim_splash_seen', '1')
-    setShowSplash(false)
-  }
-
   const categoryLabels: Record<string, string> = {
     campaigns: 'Kampanyalar',
     ...categories.reduce((acc, cat) => {
@@ -1070,15 +769,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-brand-bg text-brand-dark">
-      <AnimatePresence>
-        {showSplash && (
-          <SplashScreen
-            onDone={handleSplashDone}
-            dataReady={menuItems.length > 0 && categories.length > 0}
-          />
-        )}
-      </AnimatePresence>
-
       <StickyHeader
         scrolled={scrolled}
         onMenuClick={() => menuSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -1130,12 +820,7 @@ function App() {
               ) : filteredMenu.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {filteredMenu.map((item, i) => (
-                    <ProductCard
-                      key={item.id}
-                      item={item}
-                      index={i}
-                      onClick={() => setSelectedItem(item)}
-                    />
+                    <ProductCard key={item.id} item={item} index={i} />
                   ))}
                 </div>
               ) : (
@@ -1155,11 +840,6 @@ function App() {
         </footer>
       </div>
 
-      <ProductDetailSheet
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-        categoryLabel={categoryLabels[selectedItem?.category || ''] || ''}
-      />
     </div>
   )
 }

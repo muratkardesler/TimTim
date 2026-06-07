@@ -847,7 +847,7 @@ function ProductDetailSheet({
                 <div className="w-10 h-1.5 bg-brand-line rounded-full" />
               </div>
 
-              <div className="relative w-full md:w-1/2 lg:w-[55%] aspect-[5/3] md:aspect-auto md:h-auto overflow-hidden flex-shrink-0 bg-brand-bg">
+              <div className="relative w-full md:w-1/2 lg:w-[55%] aspect-[5/3] md:aspect-auto md:h-auto overflow-hidden flex-shrink-0 bg-white">
                 {item.image ? (
                   <img
                     src={resolveImage(item.image)}
@@ -859,20 +859,6 @@ function ProductDetailSheet({
                     Görsel yok
                   </div>
                 )}
-                <div
-                  className="absolute inset-x-0 bottom-0 h-20 pointer-events-none md:hidden"
-                  style={{
-                    background:
-                      'linear-gradient(to top, rgba(26,26,26,0.25), transparent)'
-                  }}
-                />
-                <div
-                  className="absolute inset-y-0 right-0 w-16 pointer-events-none hidden md:block"
-                  style={{
-                    background:
-                      'linear-gradient(to left, rgba(250,247,242,0.45), transparent)'
-                  }}
-                />
                 {item.is_new && (
                   <div className="absolute top-4 left-4 bg-brand-red text-white text-[10px] font-bold tracking-[0.18em] uppercase px-2.5 py-1 rounded-full shadow-[0_4px_10px_-2px_rgba(214,40,40,0.55)] z-10">
                     Yeni

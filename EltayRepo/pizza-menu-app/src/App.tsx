@@ -274,18 +274,46 @@ function BrandLogo({ size = 'md', variant = 'dark' }: { size?: 'sm' | 'md' | 'lg
   )
 }
 
-function SplashScreen({ onDone }: { onDone: () => void }) {
+const SPLASH_MIN_MS = 1100
+const SPLASH_MAX_MS = 2500
+
+function SplashScreen({ onDone, dataReady }: { onDone: () => void; dataReady: boolean }) {
+  const mountedAt = useRef(Date.now())
+  const closedRef = useRef(false)
+
   useEffect(() => {
-    const t = setTimeout(onDone, 1000)
-    return () => clearTimeout(t)
+    const close = () => {
+      if (closedRef.current) return
+      closedRef.current = true
+      onDone()
+    }
+
+    const maxTimer = setTimeout(close, SPLASH_MAX_MS)
+
+    return () => {
+      clearTimeout(maxTimer)
+    }
   }, [onDone])
+
+  useEffect(() => {
+    if (!dataReady || closedRef.current) return
+    const elapsed = Date.now() - mountedAt.current
+    const remaining = Math.max(0, SPLASH_MIN_MS - elapsed)
+    const t = setTimeout(() => {
+      if (!closedRef.current) {
+        closedRef.current = true
+        onDone()
+      }
+    }, remaining)
+    return () => clearTimeout(t)
+  }, [dataReady, onDone])
 
   return (
     <motion.div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.35, ease: 'easeInOut' }}
+      transition={{ duration: 0.45, ease: 'easeInOut' }}
     >
       <motion.div
         className="absolute inset-0 pointer-events-none"
@@ -293,37 +321,37 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
           background:
             'radial-gradient(60% 50% at 30% 70%, rgba(255,255,255,0.10), transparent 70%), radial-gradient(50% 40% at 70% 30%, rgba(255,255,255,0.07), transparent 70%)'
         }}
-        animate={{ opacity: [0.6, 1, 0.7] }}
-        transition={{ duration: 1, ease: 'easeInOut' }}
+        animate={{ opacity: [0.5, 1, 0.7, 0.9] }}
+        transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
       />
       <motion.div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(35% 25% at 50% 55%, rgba(214,40,40,0.18), transparent 70%), radial-gradient(20% 18% at 35% 45%, rgba(255,182,39,0.12), transparent 70%)'
+            'radial-gradient(35% 25% at 50% 55%, rgba(214,40,40,0.20), transparent 70%), radial-gradient(20% 18% at 35% 45%, rgba(255,182,39,0.14), transparent 70%)'
         }}
-        animate={{ opacity: [0.4, 0.9, 0.5], scale: [1, 1.08, 1.02] }}
-        transition={{ duration: 1, ease: 'easeInOut' }}
+        animate={{ opacity: [0.4, 0.95, 0.5], scale: [1, 1.08, 1.02] }}
+        transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
       />
       <motion.div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(30% 20% at 60% 80%, rgba(180,180,180,0.10), transparent 70%), radial-gradient(28% 22% at 25% 80%, rgba(220,220,220,0.08), transparent 70%)'
+            'radial-gradient(30% 20% at 60% 80%, rgba(180,180,180,0.12), transparent 70%), radial-gradient(28% 22% at 25% 80%, rgba(220,220,220,0.10), transparent 70%)'
         }}
-        animate={{ y: [10, -8, 4], opacity: [0.4, 0.7, 0.4] }}
-        transition={{ duration: 1, ease: 'easeInOut' }}
+        animate={{ y: [10, -10, 5], opacity: [0.35, 0.7, 0.4] }}
+        transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' }}
       />
 
       <motion.div
         className="relative z-10"
-        initial={{ opacity: 0, scale: 0.96, filter: 'blur(8px)' }}
+        initial={{ opacity: 0, scale: 0.94, filter: 'blur(10px)' }}
         animate={{
-          opacity: [0, 1, 1, 0],
-          scale: [0.96, 1, 1, 1.02],
-          filter: ['blur(8px)', 'blur(0px)', 'blur(0px)', 'blur(2px)']
+          opacity: 1,
+          scale: 1,
+          filter: 'blur(0px)'
         }}
-        transition={{ duration: 1, times: [0, 0.35, 0.75, 1], ease: 'easeInOut' }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
       >
         <BrandLogo size="splash" variant="light" />
       </motion.div>
@@ -1056,7 +1084,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-brand-bg text-brand-dark">
-      <AnimatePresence>{showSplash && <SplashScreen onDone={handleSplashDone} />}</AnimatePresence>
+      <AnimatePresence>
+        {showSplash && (
+          <SplashScreen
+            onDone={handleSplashDone}
+            dataReady={menuItems.length > 0 && categories.length > 0}
+          />
+        )}
+      </AnimatePresence>
 
       <StickyHeader
         scrolled={scrolled}

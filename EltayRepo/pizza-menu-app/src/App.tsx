@@ -703,43 +703,60 @@ function App() {
   const menuSectionRef = useRef<HTMLDivElement | null>(null)
 
   useLayoutEffect(() => {
-    const cachedMenu = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
-    const cachedCampaigns = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
-    const cachedCategories = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
-
-    if (cachedMenu && cachedMenu.length > 0) {
-      setMenuItems(cachedMenu)
-      setIsLoading(false)
+    const loadFromCache = (): boolean => {
+      const m = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
+      const c = getCachedData<Campaign[]>(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TIME_KEY)
+      const cat = getCachedData<Category[]>(CATEGORIES_CACHE_KEY, CATEGORIES_CACHE_TIME_KEY)
+      const ok = !!(m && m.length > 0 && cat && cat.length > 0)
+      if (m && m.length > 0) setMenuItems(m)
+      if (c && c.length > 0) setCampaigns(c)
+      if (cat && cat.length > 0) setCategories(cat)
+      return ok
     }
-    if (cachedCampaigns && cachedCampaigns.length > 0) setCampaigns(cachedCampaigns)
-    if (cachedCategories && cachedCategories.length > 0) setCategories(cachedCategories)
-  }, [])
 
-  useEffect(() => {
-    const cachedMenu = getCachedData<MenuItem[]>(MENU_CACHE_KEY, MENU_CACHE_TIME_KEY)
+    const fetchFresh = () =>
+      Promise.all([getMenuData(false), getCampaigns(false), getCategories(false)])
+        .then(([m, c, cat]) => {
+          setMenuItems(m)
+          setCampaigns(c)
+          setCategories(cat)
+          setIsLoading(false)
+        })
+        .catch(() => setIsLoading(false))
 
-    if (cachedMenu && cachedMenu.length > 0) {
-      const updateTimer = setTimeout(() => {
-        Promise.all([getMenuData(false), getCampaigns(false), getCategories(false)])
+    if (loadFromCache()) {
+      setIsLoading(false)
+      const t = setTimeout(() => {
+        Promise.all([getMenuData(true), getCampaigns(true), getCategories(true)])
           .then(([m, c, cat]) => {
             setMenuItems(m)
             setCampaigns(c)
             setCategories(cat)
           })
           .catch(() => {})
-      }, 500)
-      return () => clearTimeout(updateTimer)
+      }, 800)
+      return () => clearTimeout(t)
+    }
+
+    const earlyPromise = (window as unknown as { __TIMTIM_INIT_PROMISE__?: Promise<boolean> })
+      .__TIMTIM_INIT_PROMISE__
+
+    if (earlyPromise) {
+      setIsLoading(true)
+      earlyPromise
+        .then((ok) => {
+          if (ok && loadFromCache()) {
+            setIsLoading(false)
+          } else {
+            fetchFresh()
+          }
+        })
+        .catch(() => fetchFresh())
+      return
     }
 
     setIsLoading(true)
-    Promise.all([getMenuData(false), getCampaigns(false), getCategories(false)])
-      .then(([m, c, cat]) => {
-        setMenuItems(m)
-        setCampaigns(c)
-        setCategories(cat)
-        setIsLoading(false)
-      })
-      .catch(() => setIsLoading(false))
+    fetchFresh()
   }, [])
 
   useEffect(() => {

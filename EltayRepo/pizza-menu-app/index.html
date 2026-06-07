@@ -19,6 +19,98 @@
     />
 
     <title>TimTim Pizza</title>
+
+    <script>
+      // Early data prefetch: JS bundle indirilirken paralel olarak Supabase'den verileri çek.
+      // Sonuçlar localStorage'a App'in beklediği formatta yazılır + window promise expose edilir.
+      (function () {
+        if (window.location.pathname.indexOf('/admin') === 0) return;
+
+        var SB_URL = 'https://oedwkiblwwfxzuachovr.supabase.co';
+        var SB_KEY =
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lZHdraWJsd3dmeHp1YWNob3ZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NTg0MDIsImV4cCI6MjA5NDUzNDQwMn0.66-EniEPAdFkcdiMlPtwpdu9vPSwPIYMERDao6cvB80';
+        var headers = {
+          apikey: SB_KEY,
+          Authorization: 'Bearer ' + SB_KEY,
+          'Accept-Profile': 'public'
+        };
+
+        function fetchTable(path) {
+          return fetch(SB_URL + '/rest/v1/' + path, { headers: headers })
+            .then(function (r) {
+              return r.ok ? r.json() : null;
+            })
+            .catch(function () {
+              return null;
+            });
+        }
+
+        var menuP = fetchTable(
+          'timtim_pizza_menu?select=*&order=display_order.asc.nullslast,created_at.desc'
+        );
+        var campaignsP = fetchTable('timtim_campaigns?select=*&order=created_at.desc');
+        var categoriesP = fetchTable('timtim_categories?select=*&order=display_order.asc');
+
+        window.__TIMTIM_INIT_PROMISE__ = Promise.all([menuP, campaignsP, categoriesP])
+          .then(function (results) {
+            var now = String(Date.now());
+            try {
+              if (results[0] && results[0].length > 0) {
+                var menu = results[0].map(function (item) {
+                  return {
+                    id: item.id,
+                    name: item.name,
+                    description: item.description,
+                    prices: {
+                      small: item.price_small || 0,
+                      medium: item.price_medium || 0,
+                      large: item.price_large || 0
+                    },
+                    category: item.category || 'pizza',
+                    image: item.image || '',
+                    is_new: item.is_new || false,
+                    display_order: item.display_order || 0
+                  };
+                });
+                localStorage.setItem('timtim_menu_cache', JSON.stringify(menu));
+                localStorage.setItem('timtim_menu_cache_time', now);
+              }
+              if (results[1]) {
+                var campaigns = results[1].map(function (item) {
+                  return {
+                    id: item.id,
+                    name: item.name,
+                    description: item.description,
+                    price: item.price,
+                    items: item.items || [],
+                    image: item.image || '',
+                    created_at: item.created_at
+                  };
+                });
+                localStorage.setItem('timtim_campaigns_cache', JSON.stringify(campaigns));
+                localStorage.setItem('timtim_campaigns_cache_time', now);
+              }
+              if (results[2] && results[2].length > 0) {
+                var categories = results[2].map(function (item) {
+                  return {
+                    id: item.id,
+                    name: item.name,
+                    label: item.label,
+                    display_order: item.display_order || 0
+                  };
+                });
+                localStorage.setItem('timtim_categories_cache', JSON.stringify(categories));
+                localStorage.setItem('timtim_categories_cache_time', now);
+              }
+            } catch (e) {}
+            window.__TIMTIM_INIT_DONE__ = true;
+            return true;
+          })
+          .catch(function () {
+            return false;
+          });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

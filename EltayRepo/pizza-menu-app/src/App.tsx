@@ -254,39 +254,51 @@ function FlameIcon({ className = 'w-5 h-5', strokeOnly = false }: { className?: 
   )
 }
 
-function BrandLogo({ size = 'md', onDark = false }: { size?: 'sm' | 'md' | 'lg'; onDark?: boolean }) {
+function TimTimLogo({ size = 'hero', className = '' }: { size?: 'sm' | 'md' | 'lg' | 'hero'; className?: string }) {
   const sizes = {
-    sm: 'h-8 md:h-9',
-    md: 'h-11 md:h-12',
-    lg: 'h-14 md:h-16'
+    sm: 'w-[132px]',
+    md: 'w-[168px]',
+    lg: 'w-[204px]',
+    hero: 'w-[min(92vw,472px)]'
   }
+
+  return (
+    <div
+      className={`overflow-hidden ${sizes[size]} ${className}`}
+      style={{ aspectRatio: '1024 / 175' }}
+    >
+      <img
+        src="/logo-timtim-full.png"
+        alt="TiMTiM Pizza"
+        width={1024}
+        height={283}
+        className="block w-full h-auto max-w-none select-none"
+        draggable={false}
+        decoding="sync"
+      />
+    </div>
+  )
+}
+
+function BrandLogo({ size = 'md', onDark = false }: { size?: 'sm' | 'md' | 'lg' | 'hero'; onDark?: boolean }) {
   const padding = {
     sm: 'px-3 py-1.5',
     md: 'px-4 py-2',
-    lg: 'px-5 py-2.5'
+    lg: 'px-5 py-2.5',
+    hero: 'px-6 py-4 md:px-8 md:py-5'
   }
+
+  const logo = <TimTimLogo size={size} />
 
   if (onDark) {
     return (
       <div className={`inline-flex items-center bg-white rounded-2xl shadow-soft ${padding[size]}`}>
-        <img
-          src="/logo-timtim.png"
-          alt="TimTim Pizza"
-          className={`${sizes[size]} w-auto object-contain select-none`}
-          draggable={false}
-        />
+        {logo}
       </div>
     )
   }
 
-  return (
-    <img
-      src="/logo-timtim.png"
-      alt="TimTim Pizza"
-      className={`${sizes[size]} w-auto object-contain select-none`}
-      draggable={false}
-    />
-  )
+  return logo
 }
 
 function StickyHeader({ scrolled, onMenuClick }: { scrolled: boolean; onMenuClick: () => void }) {
@@ -321,109 +333,17 @@ function StickyHeader({ scrolled, onMenuClick }: { scrolled: boolean; onMenuClic
 
 function Hero() {
   return (
-    <section className="relative w-full overflow-hidden bg-[#0A0606] h-[360px] sm:h-[400px] md:h-[440px] lg:h-[460px]">
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(55% 80% at 85% 35%, rgba(214,40,40,0.32), transparent 65%)'
-        }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none opacity-70"
-        style={{
-          background:
-            'radial-gradient(40% 60% at 95% 50%, rgba(255,80,40,0.18), transparent 70%)'
-        }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(10,6,6,0.3) 0%, rgba(10,6,6,0) 25%, rgba(10,6,6,0) 75%, rgba(10,6,6,0.55) 100%)'
-        }}
-      />
-
-      <div className="relative z-10 max-w-6xl mx-auto h-full px-5 md:px-10 lg:px-12 pt-24 md:pt-28 pb-10 md:pb-12">
-        <div className="h-full flex flex-col justify-center max-w-xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-          >
-            <h1
-              className="font-display font-bold text-5xl sm:text-6xl md:text-7xl lg:text-[88px] leading-[0.95] tracking-tight drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]"
-            >
-              <span className="block text-brand-red">TiMTiM</span>
-              <span className="block text-white">Pizza</span>
-            </h1>
-
-            <div className="mt-5 h-[3px] w-14 bg-brand-red rounded-full" />
-
-            <div className="mt-4 inline-flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] md:text-sm text-white/85 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
-              <span className="font-medium tracking-wide">Pizza</span>
-              <span className="text-brand-red/80">•</span>
-              <span className="font-medium tracking-wide">İçecek</span>
-              <span className="text-brand-red/80">•</span>
-              <span className="font-medium tracking-wide">Tatlı</span>
-            </div>
-          </motion.div>
-        </div>
+    <section className="relative w-full bg-white">
+      <div className="relative z-10 max-w-6xl mx-auto px-5 md:px-10 pt-16 md:pt-20 pb-1 flex justify-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <TimTimLogo size="hero" />
+        </motion.div>
       </div>
-
-      <div
-        className="absolute inset-x-0 bottom-0 h-8 pointer-events-none z-20"
-        style={{
-          background: 'linear-gradient(to bottom, transparent, #FAF7F2)'
-        }}
-      />
     </section>
-  )
-}
-
-function CategoryIcon({ name, className = 'w-4 h-4' }: { name: string; className?: string }) {
-  if (name === 'pizza') {
-    return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2 L22 20 L2 20 Z" />
-        <circle cx="9" cy="14" r="1" fill="currentColor" />
-        <circle cx="14" cy="13" r="1" fill="currentColor" />
-        <circle cx="12" cy="17" r="1" fill="currentColor" />
-      </svg>
-    )
-  }
-  if (name === 'drink') {
-    return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M6 4h12l-1 5a5 5 0 0 1-10 0z" />
-        <path d="M9 21h6" />
-        <path d="M12 13v8" />
-      </svg>
-    )
-  }
-  if (name === 'dessert') {
-    return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 18h18" />
-        <path d="M5 18l1-7a6 6 0 0 1 12 0l1 7" />
-        <path d="M12 4v3" />
-      </svg>
-    )
-  }
-  if (name === 'campaigns') {
-    return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="8" width="18" height="13" rx="1.5" />
-        <path d="M3 12h18" />
-        <path d="M12 8v13" />
-        <path d="M7.5 8a2.5 2.5 0 0 1 0-5C9.5 3 12 5 12 8c0-3 2.5-5 4.5-5a2.5 2.5 0 0 1 0 5" />
-      </svg>
-    )
-  }
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-    </svg>
   )
 }
 
@@ -439,7 +359,7 @@ function CategoryTabs({
   return (
     <div className="sticky top-16 md:top-20 z-30 bg-brand-bg/92 backdrop-blur-md border-b border-brand-line">
       <div className="max-w-6xl mx-auto px-4 md:px-8 lg:px-10">
-        <div className="flex gap-2 md:gap-2.5 overflow-x-auto scrollbar-hide py-3 md:py-3.5">
+        <div className="flex gap-2 md:gap-2.5 overflow-x-auto scrollbar-hide py-2.5 md:py-3">
           {categories.map(cat => {
             const isActive = selected === cat.name
             return (
@@ -459,8 +379,7 @@ function CategoryTabs({
                     transition={{ type: 'spring', stiffness: 380, damping: 32 }}
                   />
                 )}
-                <span className="relative z-10 inline-flex items-center gap-2 whitespace-nowrap">
-                  <CategoryIcon name={cat.name} className="w-4 h-4" />
+                <span className="relative z-10 whitespace-nowrap">
                   {cat.label}
                 </span>
               </button>
@@ -539,9 +458,6 @@ function ProductCard({ item, index }: { item: MenuItem; index: number }) {
 
         {isPizza && sizes.length > 0 ? (
           <div className="mt-auto pt-4 border-t border-brand-line">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-brand-dark/70 font-bold mb-3">
-              Boyut ve Fiyatlar
-            </div>
             <div className="space-y-2">
               {sizes.map(s => (
                 <div
@@ -549,27 +465,24 @@ function ProductCard({ item, index }: { item: MenuItem; index: number }) {
                   className="flex items-center justify-between bg-brand-bg/60 border border-brand-line rounded-xl px-3.5 py-2.5"
                 >
                   <div className="flex items-baseline gap-2">
-                    <span className="font-display font-semibold text-[15px] md:text-base text-brand-dark">
+                    <span className="font-sans font-semibold text-[15px] md:text-base text-brand-dark">
                       {s.label}
                     </span>
                     <span className="text-[11px] md:text-xs text-brand-muted">{s.dim}</span>
                   </div>
-                  <span className="font-display text-lg md:text-xl text-brand-red font-bold leading-none">
+                  <span className="inline-flex items-baseline gap-0.5 font-sans text-xl md:text-2xl text-brand-red font-black leading-none tabular-nums tracking-tight">
                     {s.price}
-                    <span className="text-sm ml-0.5">₺</span>
+                    <span className="text-[0.72em] font-black">₺</span>
                   </span>
                 </div>
               ))}
             </div>
           </div>
         ) : singlePrice ? (
-          <div className="mt-auto pt-4 border-t border-brand-line flex items-center justify-between">
-            <span className="text-[11px] uppercase tracking-[0.22em] text-brand-dark/70 font-bold">
-              Fiyat
-            </span>
-            <span className="font-display text-2xl md:text-[28px] text-brand-red font-bold leading-none">
+          <div className="mt-auto pt-4 border-t border-brand-line flex items-center justify-end">
+            <span className="inline-flex items-baseline gap-0.5 font-sans text-2xl md:text-[30px] text-brand-red font-black leading-none tabular-nums tracking-tight">
               {singlePrice}
-              <span className="text-base md:text-lg ml-0.5">₺</span>
+              <span className="text-[0.72em] font-black">₺</span>
             </span>
           </div>
         ) : null}
@@ -665,9 +578,9 @@ function CampaignCard({
           <span className="text-[11px] uppercase tracking-[0.22em] text-brand-dark/70 font-bold">
             Kampanya Fiyatı
           </span>
-          <span className="font-display text-[28px] md:text-[32px] text-brand-red font-bold leading-none">
+          <span className="inline-flex items-baseline gap-0.5 font-sans text-[30px] md:text-[34px] text-brand-red font-black leading-none tabular-nums tracking-tight">
             {campaign.price}
-            <span className="text-lg md:text-xl ml-0.5">₺</span>
+            <span className="text-[0.72em] font-black">₺</span>
           </span>
         </div>
       </div>

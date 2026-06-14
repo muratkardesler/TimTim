@@ -264,15 +264,15 @@ function TimTimLogo({ size = 'hero', className = '' }: { size?: 'sm' | 'md' | 'l
 
   return (
     <div
-      className={`overflow-hidden ${sizes[size]} ${className}`}
-      style={{ aspectRatio: '1024 / 175' }}
+      className={`relative overflow-hidden ${sizes[size]} ${className}`}
+      style={{ paddingBottom: `${(175 / 1024) * 100}%` }}
     >
       <img
         src="/logo-timtim-full.png"
         alt="TiMTiM Pizza"
         width={1024}
         height={283}
-        className="block w-full h-auto max-w-none select-none"
+        className="absolute inset-0 w-full h-auto max-w-none select-none"
         draggable={false}
         decoding="sync"
       />
@@ -417,7 +417,7 @@ function ProductCard({ item, index }: { item: MenuItem; index: number }) {
         ease: [0.22, 1, 0.36, 1]
       }}
     >
-      <div className="relative w-full aspect-[4/3] overflow-hidden bg-white">
+      <div className="relative w-full overflow-hidden bg-white" style={{ paddingBottom: '75%' }}>
         {imageSrc ? (
           <img
             src={imageSrc}
@@ -518,7 +518,7 @@ function CampaignCard({
         ease: [0.22, 1, 0.36, 1]
       }}
     >
-      <div className="relative w-full aspect-[4/3] overflow-hidden bg-brand-bg">
+      <div className="relative w-full overflow-hidden bg-brand-bg" style={{ paddingBottom: '75%' }}>
         {cover ? (
           <img
             src={cover}
@@ -591,7 +591,7 @@ function CampaignCard({
 function CardSkeleton() {
   return (
     <div className="bg-brand-card rounded-2xl overflow-hidden border border-brand-line/60">
-      <div className="w-full aspect-[5/4] shimmer" />
+      <div className="w-full shimmer" style={{ paddingBottom: '80%' }} />
       <div className="px-4 md:px-5 pt-4 pb-4 space-y-3">
         <div className="h-5 w-2/3 shimmer rounded" />
         <div className="h-3 w-full shimmer rounded" />

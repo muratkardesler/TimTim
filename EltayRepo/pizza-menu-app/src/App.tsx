@@ -491,6 +491,70 @@ function ProductCard({ item, index }: { item: MenuItem; index: number }) {
   )
 }
 
+function ProductListItem({ item, index }: { item: MenuItem; index: number }) {
+  const imageSrc = resolveImage(item.image)
+  const price = item.prices.small || item.prices.medium || item.prices.large || 0
+
+  return (
+    <motion.div
+      className="group flex items-center gap-4 md:gap-5 bg-white rounded-2xl border border-brand-line/70 px-3 py-2 md:px-4 md:py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card hover:border-brand-line"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.35,
+        delay: Math.min(index * 0.035, 0.3),
+        ease: [0.22, 1, 0.36, 1]
+      }}
+    >
+      <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-white flex items-center justify-center">
+        {imageSrc ? (
+          <img
+            src={imageSrc}
+            alt={item.name}
+            className="absolute inset-0 w-full h-full object-contain"
+            style={{ transform: 'scale(2.6)', transformOrigin: 'center' }}
+            draggable={false}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+              const parent = e.currentTarget.parentElement
+              if (parent) {
+                const fb = parent.querySelector('.img-fallback') as HTMLElement
+                if (fb) fb.style.display = 'flex'
+              }
+            }}
+          />
+        ) : null}
+        <div
+          className="img-fallback absolute inset-0 items-center justify-center text-brand-muted text-[9px] text-center px-1"
+          style={{ display: imageSrc ? 'none' : 'flex' }}
+        >
+          Görsel yok
+        </div>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <h3 className="font-display font-semibold text-base md:text-lg text-brand-dark leading-tight truncate">
+          {item.name}
+        </h3>
+        {item.description && (
+          <p className="text-[13px] md:text-sm text-brand-muted leading-snug truncate mt-0.5">
+            {item.description}
+          </p>
+        )}
+      </div>
+
+      {price > 0 && (
+        <div className="flex-shrink-0 pl-2">
+          <span className="inline-flex items-baseline gap-0.5 font-sans text-xl md:text-2xl font-bold text-[#1E1E1E] leading-none tabular-nums tracking-tight">
+            {price}
+            <span className="text-[0.7em]">₺</span>
+          </span>
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
 function CampaignCard({
   campaign,
   menuItems,
@@ -748,11 +812,19 @@ function App() {
                   <EmptyState text="Henüz kampanya bulunmamaktadır." />
                 )
               ) : filteredMenu.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                  {filteredMenu.map((item, i) => (
-                    <ProductCard key={item.id} item={item} index={i} />
-                  ))}
-                </div>
+                selectedCategory === 'pizza' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                    {filteredMenu.map((item, i) => (
+                      <ProductCard key={item.id} item={item} index={i} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 md:gap-3">
+                    {filteredMenu.map((item, i) => (
+                      <ProductListItem key={item.id} item={item} index={i} />
+                    ))}
+                  </div>
+                )
               ) : (
                 <EmptyState text="Bu kategoride henüz ürün bulunmamaktadır." />
               )}

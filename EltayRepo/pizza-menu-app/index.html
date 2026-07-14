@@ -27,6 +27,9 @@
       // Sonuçlar localStorage'a App'in beklediği formatta yazılır + window promise expose edilir.
       (function () {
         if (window.location.pathname.indexOf('/admin') === 0) return;
+        // Eski Safari (iOS 9 vb.) fetch/Promise desteklemez; erken prefetch'i atla,
+        // veri app içindeki polyfill'li yol üzerinden yüklenir.
+        if (!window.fetch || !window.Promise) return;
 
         var SB_URL = 'https://oedwkiblwwfxzuachovr.supabase.co';
         var SB_KEY =

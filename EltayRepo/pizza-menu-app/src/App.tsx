@@ -1,5 +1,4 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from './supabaseClient'
 
 interface PizzaSize {
@@ -335,13 +334,9 @@ function Hero() {
   return (
     <section className="relative w-full bg-white">
       <div className="relative z-10 max-w-6xl mx-auto px-5 md:px-10 pt-16 md:pt-20 pb-1 flex justify-center">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        >
+        <div className="anim-fade-in">
           <TimTimLogo size="hero" />
-        </motion.div>
+        </div>
       </div>
     </section>
   )
@@ -373,11 +368,7 @@ function CategoryTabs({
                 }`}
               >
                 {isActive && (
-                  <motion.span
-                    layoutId="active-pill"
-                    className="absolute inset-0 bg-brand-red rounded-full shadow-[0_4px_12px_-2px_rgba(214,40,40,0.45)]"
-                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                  />
+                  <span className="absolute inset-0 bg-brand-red rounded-full shadow-[0_4px_12px_-2px_rgba(214,40,40,0.45)]" />
                 )}
                 <span className="relative z-10 whitespace-nowrap">
                   {cat.label}
@@ -407,15 +398,9 @@ function ProductCard({ item, index }: { item: MenuItem; index: number }) {
     : 0
 
   return (
-    <motion.div
-      className="group relative w-full bg-brand-card rounded-2xl overflow-hidden shadow-card border border-brand-line/60"
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.45,
-        delay: Math.min(index * 0.04, 0.32),
-        ease: [0.22, 1, 0.36, 1]
-      }}
+    <div
+      className="group relative w-full bg-brand-card rounded-2xl overflow-hidden shadow-card border border-brand-line/60 anim-fade-up"
+      style={{ animationDelay: `${Math.min(index * 0.04, 0.32)}s` }}
     >
       <div className="relative w-full overflow-hidden bg-white" style={{ paddingBottom: '75%' }}>
         {imageSrc ? (
@@ -487,7 +472,7 @@ function ProductCard({ item, index }: { item: MenuItem; index: number }) {
           </div>
         ) : null}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -496,15 +481,9 @@ function ProductListItem({ item, index }: { item: MenuItem; index: number }) {
   const price = item.prices.small || item.prices.medium || item.prices.large || 0
 
   return (
-    <motion.div
-      className="group flex items-center gap-4 md:gap-5 bg-white rounded-2xl border border-brand-line/70 px-3 py-2 md:px-4 md:py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card hover:border-brand-line"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.35,
-        delay: Math.min(index * 0.035, 0.3),
-        ease: [0.22, 1, 0.36, 1]
-      }}
+    <div
+      className="group flex items-center gap-4 md:gap-5 bg-white rounded-2xl border border-brand-line/70 px-3 py-2 md:px-4 md:py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card hover:border-brand-line anim-fade-up"
+      style={{ animationDelay: `${Math.min(index * 0.035, 0.3)}s` }}
     >
       <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-white flex items-center justify-center">
         {imageSrc ? (
@@ -551,7 +530,7 @@ function ProductListItem({ item, index }: { item: MenuItem; index: number }) {
           </span>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }
 
@@ -572,15 +551,9 @@ function CampaignCard({
     : ''
 
   return (
-    <motion.div
-      className="bg-brand-card rounded-2xl overflow-hidden shadow-card border border-brand-line/60"
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.45,
-        delay: Math.min(index * 0.04, 0.32),
-        ease: [0.22, 1, 0.36, 1]
-      }}
+    <div
+      className="bg-brand-card rounded-2xl overflow-hidden shadow-card border border-brand-line/60 anim-fade-up"
+      style={{ animationDelay: `${Math.min(index * 0.04, 0.32)}s` }}
     >
       <div className="relative w-full overflow-hidden bg-brand-bg" style={{ paddingBottom: '75%' }}>
         {cover ? (
@@ -648,7 +621,7 @@ function CampaignCard({
           </span>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -789,14 +762,7 @@ function App() {
             </div>
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={selectedCategory}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-            >
+          <div key={selectedCategory} className="anim-fade-up-fast">
               {isLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {[0, 1, 2, 3, 4, 5].map(i => <CardSkeleton key={i} />)}
@@ -828,8 +794,7 @@ function App() {
               ) : (
                 <EmptyState text="Bu kategoride henüz ürün bulunmamaktadır." />
               )}
-            </motion.div>
-          </AnimatePresence>
+          </div>
         </main>
 
         <footer className="border-t border-brand-line bg-brand-bg">

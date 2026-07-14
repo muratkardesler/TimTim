@@ -258,7 +258,7 @@ function TimTimLogo({ size = 'hero', className = '' }: { size?: 'sm' | 'md' | 'l
     sm: 'w-[132px]',
     md: 'w-[168px]',
     lg: 'w-[204px]',
-    hero: 'w-[min(92vw,472px)]'
+    hero: 'w-[92vw] max-w-[472px]'
   }
 
   return (
